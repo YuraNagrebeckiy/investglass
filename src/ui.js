@@ -23,3 +23,4 @@ if (sb) {
   sb.onclick = () => { localStorage.setItem('ig_sound', soundOn() ? '0' : '1'); paint(); if (soundOn()) { audio(); beep(880, 120); } };
   paint();
 }
+setTimeout(() => { import('./fx.js').catch((e) => console.error('fx module', e)); }, 0);
