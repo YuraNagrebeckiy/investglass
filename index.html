@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020"><title>InvestGlass</title>
+<link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="bar glass"><b>InvestGlass</b><nav id="tabs">
+<button data-tab="bonds" class="on">Облигации</button><button data-tab="crypto">Риск сделки</button><button data-tab="info">Данные</button></nav></header>
+<main>
+<section id="bonds" class="tab on">
+ <div class="grid">
+  <div class="card glass"><h2>Параметры</h2>
+   <label>Брокер<select id="broker"></select></label>
+   <div class="two"><label>Комиссия брокера, %<input id="feeRate" type="number" step="0.001"></label><label>Биржа (облигации), %<input id="exRate" type="number" step="0.001"></label></div>
+   <div class="two"><label>Абонплата, ₽/мес<input id="monthlyFee" type="number" step="10"></label><label>НДФЛ, %<input id="taxRate" type="number" value="13"></label></div>
+   <h3>Облигация</h3>
+   <div class="two"><label>Название / ISIN<input id="bName" value="МОНОП 1Р03"></label><label>Номинал, ₽<input id="face" type="number" value="1000"></label></div>
+   <div class="two"><label>Цена, % от номинала<input id="pricePct" type="number" step="0.01" value="99.587"></label><label>НКД на 1 бумагу, ₽<input id="accrued" type="number" step="0.01" value="0"></label></div>
+   <div class="two"><label>Купон за выплату, ₽<input id="coupon" type="number" step="0.01" value="21.78"></label><label>Погашение через, мес. (пусто = за горизонтом)<input id="mat" type="number"></label></div>
+   <h3>План</h3>
+   <div class="two"><label>Стартовая сумма, ₽<input id="initial" type="number" value="200000"></label><label>Пополнение в месяц, ₽<input id="topup" type="number" value="15000"></label></div>
+   <div class="two"><label>Горизонт, мес.<input id="months" type="number" value="24"></label><label>Доходность свободного кэша, % год<input id="liq" type="number" step="0.1" value="0"></label></div>
+   <h3>Вклад для сравнения</h3>
+   <label>Источник ставки<select id="depMode"><option value="cbr_avg">Средняя макс. ставка топ-10 (ЦБ), по сроку</option><option value="key_spread">Ключевая ставка ЦБ + спред банков</option><option value="manual">Ввести вручную</option></select></label>
+   <div class="two"><label>Спред к ключевой, п.п.<input id="spread" type="number" step="0.01"></label><label>Ставка вручную, %<input id="depManual" type="number" step="0.01" value="13"></label></div>
+   <button id="calc" class="btn">Рассчитать</button>
+  </div>
+  <div class="card glass"><h2>Результат</h2><div id="warn"></div><div id="kpis" class="kpis"></div><svg id="chart" viewBox="0 0 600 260" preserveAspectRatio="none"></svg><div class="legend"><i class="a"></i> Облигация <i class="b"></i> Вклад <i class="c"></i> Внесено</div></div>
+ </div>
+ <div class="card glass"><h2>По месяцам</h2><div class="scroll"><table id="tbl"></table></div></div>
+</section>
+<section id="crypto" class="tab">
+ <div class="grid"><div class="card glass"><h2>Калькулятор сделки (OKX)</h2>
+  <div class="two"><label>Направление<select id="dir"><option value="long">Long</option><option value="short">Short</option></select></label><label>Инструмент<select id="inst"><option value="spot">Спот / маржа</option><option value="swap">Бессрочный своп</option></select></label></div>
+  <div class="two"><label>Цена входа<input id="entry" type="number" step="any" value="531.55"></label><label>ATR (на вашем ТФ)<input id="atr" type="number" step="any" value="5.2"></label></div>
+  <div class="two"><label>Капитал, $<input id="equity" type="number" value="1600"></label><label>Риск на сделку, %<input id="riskPct" type="number" step="0.1" value="1"></label></div>
+  <div class="two"><label>Стоп, × ATR<input id="stopK" type="number" step="0.1" value="2"></label><label>Тейк, × ATR<input id="tpK" type="number" step="0.1" value="3"></label></div>
+  <div class="two"><label>Плечо<input id="lev" type="number" step="0.5" value="1"></label><label>Тип заявки<select id="ordType"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div>
+  <label>Держать, часов<input id="hold" type="number" value="24"></label>
+  <button id="calc2" class="btn">Рассчитать</button></div>
+  <div class="card glass"><h2>План сделки</h2><div id="riskOut" class="kpis"></div><p class="hint">Размер позиции считается от допустимого убытка по стопу вместе с комиссиями и стоимостью удержания. Светофор индикаторов подключается на следующем этапе.</p></div></div>
+</section>
+<section id="info" class="tab"><div class="card glass"><h2>Источники и актуальность</h2><div id="infoBox"></div></div></section>
+</main>
+<script type="module" src="src/app.js"></script>
+</body></html>
