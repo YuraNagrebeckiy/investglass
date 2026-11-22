@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1020"><title>InvestGlass</title>
+<meta name="color-scheme" content="light dark"><meta name="theme-color" content="#eef3fb"><title>InvestGlass</title>
 <link rel="stylesheet" href="styles.css"></head>
 <body>
 <header class="bar glass"><b>InvestGlass</b><nav id="tabs">
-<button data-tab="bonds" class="on">Облигации</button><button data-tab="crypto">Риск сделки</button><button data-tab="info">Данные</button></nav></header>
+<button data-tab="bonds" class="on">Облигации</button><button data-tab="scan">Анализ</button><button data-tab="journal">Журнал</button><button data-tab="crypto">Риск</button><button data-tab="info">Данные</button></nav>
+<button id="theme" class="mini" title="Светлая / тёмная тема">◐</button></header>
 <main>
 <section id="bonds" class="tab on">
  <div class="grid">
@@ -29,6 +30,24 @@
  </div>
  <div class="card glass"><h2>По месяцам</h2><div class="scroll"><table id="tbl"></table></div></div>
 </section>
+
+<section id="scan" class="tab"><div class="card glass">
+ <h2>Технический анализ</h2>
+ <div class="row">
+  <div class="seg" id="mkt"><button data-m="crypto" class="on">Крипта OKX (топ-100)</button><button data-m="stocks">Акции MOEX (1–2 уровень)</button></div>
+  <label class="inl">Подход<select id="mode"><option value="trend">По тренду</option><option value="reversion">От перекупленности / перепроданности</option></select></label>
+  <button id="scanBtn" class="btn sm">Проанализировать всё</button><button id="sndBtn" class="btn sm ghost">Звук: выкл</button>
+ </div>
+ <p id="prog" class="hint">Нажмите «Проанализировать всё». Сигналы информационные, это не инвестиционная рекомендация.</p>
+ <div class="seg" id="view"><button data-v="long" class="on">Long</button><button data-v="short">Short</button><button data-v="fav">★ Избранное</button><button data-v="all">Все</button></div>
+ <div class="scroll"><table id="scanTbl"></table></div>
+</div></section>
+
+<section id="journal" class="tab"><div class="card glass"><h2>Журнал сделок</h2>
+ <p class="hint">Записи хранятся в этом браузере. В момент входа сохраняются цена, стоп, тейк и состояние индикаторов по всем таймфреймам.</p>
+ <button id="jCsv" class="btn sm ghost">Скачать CSV</button>
+ <div class="scroll"><table id="jTbl"></table></div></div></section>
+
 <section id="crypto" class="tab">
  <div class="grid"><div class="card glass"><h2>Калькулятор сделки (OKX)</h2>
   <div class="two"><label>Направление<select id="dir"><option value="long">Long</option><option value="short">Short</option></select></label><label>Инструмент<select id="inst"><option value="spot">Спот / маржа</option><option value="swap">Бессрочный своп</option></select></label></div>
@@ -38,9 +57,12 @@
   <div class="two"><label>Плечо<input id="lev" type="number" step="0.5" value="1"></label><label>Тип заявки<select id="ordType"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div>
   <label>Держать, часов<input id="hold" type="number" value="24"></label>
   <button id="calc2" class="btn">Рассчитать</button></div>
-  <div class="card glass"><h2>План сделки</h2><div id="riskOut" class="kpis"></div><p class="hint">Размер позиции считается от допустимого убытка по стопу вместе с комиссиями и стоимостью удержания. Светофор индикаторов подключается на следующем этапе.</p></div></div>
+  <div class="card glass"><h2>План сделки</h2><div id="riskOut" class="kpis"></div><p class="hint">Размер позиции считается от допустимого убытка по стопу вместе с комиссиями и стоимостью удержания. Для расчёта по живым данным откройте актив на вкладке «Анализ».</p></div></div>
 </section>
 <section id="info" class="tab"><div class="card glass"><h2>Источники и актуальность</h2><div id="infoBox"></div></div></section>
 </main>
+<div id="sheet" class="sheet" hidden></div>
+<script type="module" src="src/theme.js"></script>
 <script type="module" src="src/app.js"></script>
+<script type="module" src="src/screener.js"></script>
 </body></html>
