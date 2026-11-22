@@ -25,7 +25,7 @@ export function irrMonthly(flows) {
 
 export function simulateBond(p) {
   const o = {
-    initial: 0, topup: 0, months: 24, taxRate: 0.13, feeRate: 0.003, exchangeRate: 0,
+    initial: 0, topup: 0, months: 24, taxRate: 0.13, taxMode: 'each', liquidate: false, feeRate: 0.003, exchangeRate: 0,
     monthlyFee: 0, monthlyFeeOnlyIfTrades: true, minFee: 0, liquidityRate: 0,
     face: 1000, pricePct: 100, coupon: 0, accrued: 0, payPerYear: 12,
     maturityMonth: null, reinvest: true, ...p,
@@ -33,9 +33,11 @@ export function simulateBond(p) {
   const clean = (o.face * o.pricePct) / 100;
   const unit = clean + o.accrued;
   const step = 12 / o.payPerYear;
+  const defer = o.taxMode === 'end';
   let cash = 0, qty = 0, costBasis = 0, nkdCredit = 0;
-  let contributed = 0, fees = 0, taxes = 0, couponNet = 0, liqInterest = 0;
+  let contributed = 0, fees = 0, taxes = 0, deferred = 0, couponNet = 0, liqInterest = 0;
   const rows = [], flows = [];
+  const pay = (tax) => { if (defer) deferred += tax; else { cash -= tax; taxes += tax; } };
 
   for (let m = 0; m <= o.months; m++) {
     let couponM = 0;
@@ -44,19 +46,19 @@ export function simulateBond(p) {
 
     if (m > 0) {
       const li = (cash * o.liquidityRate) / 12;
-      if (li > 0) { const t = li * o.taxRate; cash += li - t; taxes += t; liqInterest += li - t; }
+      if (li > 0) { cash += li; pay(li * o.taxRate); liqInterest += li; }
       const active = qty > 0 && (o.maturityMonth == null || m <= o.maturityMonth);
       if (active && m % step === 0) {
         const gross = qty * o.coupon;
         const base = Math.max(0, gross - nkdCredit);
         nkdCredit = Math.max(0, nkdCredit - gross);
         const tax = base * o.taxRate;
-        cash += gross - tax; taxes += tax; couponM = gross - tax; couponNet += couponM;
+        cash += gross; pay(tax); couponM = gross - tax; couponNet += couponM;
       }
       if (o.maturityMonth != null && m === o.maturityMonth && qty > 0) {
         const redeem = qty * o.face;
         const tax = Math.max(0, redeem - costBasis) * o.taxRate;
-        cash += redeem - tax; taxes += tax; qty = 0; costBasis = 0; nkdCredit = 0;
+        cash += redeem; pay(tax); qty = 0; costBasis = 0; nkdCredit = 0;
       }
     }
 
@@ -76,11 +78,13 @@ export function simulateBond(p) {
     rows.push({ month: m, contributed: round2(contributed), cash: round2(cash), qty, market: round2(market), equity: round2(cash + market), couponNet: round2(couponM) });
   }
   const last = rows[rows.length - 1];
-  flows[flows.length - 1] += last.equity;
+  const exitFee = o.liquidate ? last.market * ((o.feeRate || 0) + (o.exchangeRate || 0)) : 0;
+  const equityNet = last.equity - deferred - exitFee;
+  flows[flows.length - 1] += equityNet;
   const irr = irrMonthly(flows);
   return {
-    rows, contributed: round2(contributed), equity: last.equity, profit: round2(last.equity - contributed),
-    fees: round2(fees), taxes: round2(taxes), couponNet: round2(couponNet),
+    rows, contributed: round2(contributed), equity: last.equity, equityNet: round2(equityNet), profit: round2(equityNet - contributed),
+    fees: round2(fees), exitFee: round2(exitFee), taxes: round2(taxes), taxDeferred: round2(deferred), couponNet: round2(couponNet),
     annualReturn: Number.isNaN(irr) ? NaN : Math.pow(1 + irr, 12) - 1,
     unitCost: round2(unit),
   };
