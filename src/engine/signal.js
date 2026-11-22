@@ -6,7 +6,7 @@ export const PRESETS = {
 };
 
 export const HORIZONS = {
-  short: [['5m', 1], ['15m', 1], ['30m', 1]],
+  short: [['5m', 1], ['10m', 1], ['15m', 1], ['30m', 1]],
   mid: [['1h', 1], ['4h', 1.5], ['1d', 2]],
   long: [['1d', 1], ['1w', 1.5], ['1M', 1]],
 };
@@ -43,7 +43,7 @@ export function evaluate(byTf, dir, horizon = 'mid', preset = PRESETS.stocks) {
   let wsum = 0, atrRef = NaN, price = NaN;
   const detail = {};
   for (const [tf, wt] of HORIZONS[horizon]) {
-    if (!byTf[tf]) continue;
+    if (!byTf[tf] || byTf[tf].length < 30) continue;
     const L = lights(byTf[tf], dir, preset);
     detail[tf] = L; wsum += wt;
     for (const k of ['macd', 'ema', 'rsi']) agg[k] += LIGHT[L[k]] * wt;
