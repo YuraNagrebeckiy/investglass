@@ -1,0 +1,33 @@
+{
+ "updated": "2026-11-22T14:51:36.770Z",
+ "log": [
+  "ok okx",
+  "FAIL cbr-key-rate: https://www.cbr.ru/hd_base/keyrate/ 403",
+  "ok moex-bonds",
+  "ok moex-enrich"
+ ],
+ "stats": {
+  "boards": [
+   "TQCB",
+   "TQOB",
+   "TQOD",
+   "TQOE",
+   "TQOY",
+   "TQRD",
+   "TQUD"
+  ],
+  "board_TQCB": 2684,
+  "board_TQOB": 60,
+  "board_TQOD": 7,
+  "board_TQOE": 0,
+  "board_TQOY": 1,
+  "board_TQRD": 83,
+  "board_TQUD": 0,
+  "bonds": 2835,
+  "enriched": {
+   "targets": 1200,
+   "description": 1152,
+   "amortization": 1152
+  }
+ }
+}
