@@ -19,18 +19,23 @@ export function lights(candles, dir, preset = PRESETS.stocks) {
   const d = dir === 'short' ? -1 : 1;
   const m = macd(c), r = rsi(c), a = atr(h, l, c);
   const [e1, e2, e3] = preset.emaSet.map((n) => ema(c, n));
-  const px = last(c), hist = last(m.hist), prev = m.hist[m.hist.length - 2];
-  let macdL = 'yellow';
-  if (hist * d < 0) macdL = 'red'; else if (hist * d > 0 && (hist - prev) * d > 0) macdL = 'green';
-  const E1 = last(e1), E2 = last(e2), E3 = last(e3);
-  let emaL = 'red';
-  if (px * d > E1 * d && E1 * d > E2 * d && E2 * d > E3 * d) emaL = 'green';
-  else if (px * d > E2 * d) emaL = 'yellow';
+  const px = last(c), hist = last(m.hist), prev = m.hist[m.hist.length - 2], A = last(a);
+  const E1 = last(e1), E2 = last(e2), E3 = Number.isFinite(last(e3)) ? last(e3) : E2;
   const R = last(r), rv = d === 1 ? R : 100 - R;
-  let rsiL;
-  if (preset.rsiMode === 'reversion') rsiL = rv <= 35 ? 'green' : rv <= 50 ? 'yellow' : 'red';
-  else rsiL = rv >= 45 && rv <= 65 ? 'green' : (rv > 65 && rv <= preset.rsiOver) || (rv >= 40 && rv < 45) ? 'yellow' : 'red';
-  return { macd: macdL, ema: emaL, rsi: rsiL, price: px, atr: last(a), rsiValue: R };
+  let macdL = 'yellow', emaL = 'red', rsiL;
+  if (preset.rsiMode === 'reversion') {
+    const dm = (hist - prev) * d;
+    macdL = dm > 0 ? 'green' : dm < 0 ? 'red' : 'yellow';
+    const z = ((px - E2) / A) * -d;
+    emaL = z >= 1.5 ? 'green' : z >= 0.5 ? 'yellow' : 'red';
+    rsiL = rv <= 35 ? 'green' : rv <= 45 ? 'yellow' : 'red';
+  } else {
+    if (hist * d < 0) macdL = 'red'; else if (hist * d > 0 && (hist - prev) * d > 0) macdL = 'green';
+    if (px * d > E1 * d && E1 * d > E2 * d && E2 * d >= E3 * d) emaL = 'green';
+    else if (px * d > E2 * d) emaL = 'yellow';
+    rsiL = rv >= 45 && rv <= 65 ? 'green' : (rv > 65 && rv <= preset.rsiOver) || (rv >= 40 && rv < 45) ? 'yellow' : 'red';
+  }
+  return { macd: macdL, ema: emaL, rsi: rsiL, price: px, atr: A, rsiValue: R };
 }
 
 export function evaluate(byTf, dir, horizon = 'mid', preset = PRESETS.stocks) {
