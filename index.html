@@ -1,29 +1,95 @@
 <!doctype html>
 <html lang="ru"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="color-scheme" content="light dark"><meta name="theme-color" content="#eef3fb"><title>InvestGlass</title>
-<link rel="stylesheet" href="styles.css"></head>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="ui.css"></head>
 <body>
 <header class="bar glass"><b>InvestGlass</b><nav id="tabs">
 <button data-tab="bonds" class="on">Облигации</button><button data-tab="scan">Анализ</button><button data-tab="journal">Журнал</button><button data-tab="crypto">Риск</button><button data-tab="info">Данные</button></nav>
-<button id="theme" class="mini" title="Светлая / тёмная тема">◐</button></header>
+<button id="snd" class="mini" title="Звук уведомлений">🔕</button><button id="theme" class="mini" title="Светлая / тёмная тема">◐</button></header>
 <main>
 <section id="bonds" class="tab on">
- <div class="grid">
-  <div class="card glass"><h2>Параметры</h2>
+ <div class="card glass"><h2>База облигаций</h2>
+  <p class="hint">Нажмите кнопку, и приложение подгрузит всю базу MOEX и свежие цены. Дальше отбирайте бумаги фильтрами.</p>
+  <button id="bLoad" class="btn">Подгрузить информацию</button>
+  <label class="chk"><input type="checkbox" id="bLive" checked> Обновить цены и обороты напрямую с MOEX</label>
+  <p id="bInfo" class="hint"></p>
+ </div>
+
+ <div class="card glass" id="fnl" hidden><h2>Отбор облигаций</h2>
+  <div id="fCtl">
+   <h3>Что показывать</h3>
+   <label class="chk"><input type="checkbox" id="f_traded" checked> Только с торгами</label>
+   <label class="chk"><input type="checkbox" id="f_rub" checked> Только рубли</label>
+   <div>
+    <label class="chk"><input type="checkbox" id="f_ofz" checked> ОФЗ</label>
+    <label class="chk"><input type="checkbox" id="f_corp1" checked> Корп. 1 эшелон</label>
+    <label class="chk"><input type="checkbox" id="f_corp2" checked> Корп. 2 эшелон</label>
+    <label class="chk"><input type="checkbox" id="f_corp3"> Корп. 3 эшелон</label>
+    <label class="chk"><input type="checkbox" id="f_hy"> ВДО</label>
+   </div>
+   <label class="chk"><input type="checkbox" id="f_qual"> Я квалифицированный инвестор</label>
+   <h3>Доходность и купон</h3>
+   <div class="three">
+    <label>Купон<select id="f_coupon"><option value="monthly">Ежемесячный</option><option value="pay">Любой, но с купоном</option><option value="any">Любой</option></select></label>
+    <label>Доходность к погашению от, %<input id="f_minY" type="number" inputmode="decimal" step="0.5" value="10"></label>
+    <label>Доходность до, % (пусто = без предела)<input id="f_maxY" type="number" inputmode="decimal" step="0.5"></label>
+   </div>
+   <h3>Ликвидность</h3>
+   <div class="three">
+    <label>Оборот за день от, ₽<input id="f_minV" type="number" inputmode="numeric" step="500000" value="1000000"></label>
+    <label>Сделок за день от<input id="f_minT" type="number" inputmode="numeric" value="5"></label>
+    <label>Спред bid/offer до, %<input id="f_maxS" type="number" inputmode="decimal" step="0.1" value="1.5"></label>
+   </div>
+   <h3>Срок и риск</h3>
+   <div class="three">
+    <label>До погашения от, мес.<input id="f_minM" type="number" inputmode="numeric" value="3"></label>
+    <label>До погашения до, мес.<input id="f_maxM" type="number" inputmode="numeric" value="60"></label>
+    <label>Макс. уровень риска<select id="f_risk"><option value="1">1 низкий</option><option value="2">2 умеренный</option><option value="3">3 средний</option><option value="4">4 повышенный</option><option value="5" selected>5 любой</option></select></label>
+   </div>
+   <label class="chk"><input type="checkbox" id="f_noOffer" checked> Без оферты</label>
+   <label class="chk"><input type="checkbox" id="f_noAmort"> Без амортизации</label>
+   <label>Сортировать<select id="f_sort"><option value="yield">По доходности</option><option value="vol">По ликвидности</option><option value="risk">По риску</option></select></label>
+  </div>
+  <h3>Воронка отбора</h3><div id="fSteps"></div>
+  <h2 id="fCount" style="margin-top:14px"></h2>
+  <div class="row"><button id="fTop" class="btn sm">Отобрать топ-10</button><button id="fReset" class="btn sm ghost">Сбросить условия</button></div>
+  <div id="bList"></div><div id="bMore"></div>
+ </div>
+
+ <div class="card glass"><h2>Отобранные бумаги</h2>
+  <div id="short"></div><button id="sEq" class="btn sm ghost">Доли поровну</button>
+  <h3>Портфель и сложный процент</h3>
+  <div class="three">
+   <label>Первый взнос, ₽<input id="pInit" type="number" inputmode="numeric" value="100000"></label>
+   <label>Пополнение в месяц, ₽<input id="pTop" type="number" inputmode="numeric" value="15000"></label>
+   <label>Срок<select id="pTerm"><option value="3">3 месяца</option><option value="6">6 месяцев</option><option value="12" selected>12 месяцев</option><option value="mat">До погашения</option></select></label>
+   <label>Налог на купоны<select id="pTaxMode"><option value="each">С каждого купона</option><option value="end">В конце при выводе</option></select></label>
+   <label>НДФЛ, %<input id="pTax" type="number" inputmode="decimal" value="13"></label>
+   <label>Ставка на свободные деньги, % год<input id="pLiq" type="number" inputmode="decimal" step="0.5" value="12"></label>
+   <label>Брокер<select id="pBrk"></select></label>
+  </div>
+  <button id="pCalc" class="btn">Рассчитать портфель</button>
+  <div id="pRes"></div>
+ </div>
+
+ <div class="grid" id="calcCard">
+  <div class="card glass"><h2>Одна бумага</h2>
+   <label>Бумага из отобранных<select id="bPick"><option value="">Выберите из отобранных…</option></select></label>
+   <p id="cNote" class="hint"></p>
    <label>Брокер<select id="broker"></select></label>
-   <div class="two"><label>Комиссия брокера, %<input id="feeRate" type="number" step="0.001"></label><label>Биржа (облигации), %<input id="exRate" type="number" step="0.001"></label></div>
-   <div class="two"><label>Абонплата, ₽/мес<input id="monthlyFee" type="number" step="10"></label><label>НДФЛ, %<input id="taxRate" type="number" value="13"></label></div>
+   <div class="two"><label>Комиссия брокера, %<input id="feeRate" type="number" inputmode="decimal" step="0.001"></label><label>Биржа (облигации), %<input id="exRate" type="number" inputmode="decimal" step="0.001"></label></div>
+   <div class="two"><label>Абонплата, ₽/мес<input id="monthlyFee" type="number" inputmode="decimal" step="10"></label><label>НДФЛ, %<input id="taxRate" type="number" inputmode="decimal" value="13"></label></div>
    <h3>Облигация</h3>
-   <div class="two"><label>Название / ISIN<input id="bName" value="МОНОП 1Р03"></label><label>Номинал, ₽<input id="face" type="number" value="1000"></label></div>
-   <div class="two"><label>Цена, % от номинала<input id="pricePct" type="number" step="0.01" value="99.587"></label><label>НКД на 1 бумагу, ₽<input id="accrued" type="number" step="0.01" value="0"></label></div>
-   <div class="two"><label>Купон за выплату, ₽<input id="coupon" type="number" step="0.01" value="21.78"></label><label>Погашение через, мес. (пусто = за горизонтом)<input id="mat" type="number"></label></div>
+   <div class="two"><label>Название / ISIN<input id="bName" value="МОНОП 1Р03"></label><label>Номинал, ₽<input id="face" type="number" inputmode="decimal" value="1000"></label></div>
+   <div class="two"><label>Цена, % от номинала<input id="pricePct" type="number" inputmode="decimal" step="0.01" value="99.587"></label><label>НКД на 1 бумагу, ₽<input id="accrued" type="number" inputmode="decimal" step="0.01" value="0"></label></div>
+   <div class="two"><label>Купон за выплату, ₽ (в месяц)<input id="coupon" type="number" inputmode="decimal" step="0.01" value="21.78"></label><label>Погашение через, мес. (пусто = за горизонтом)<input id="mat" type="number" inputmode="numeric"></label></div>
    <h3>План</h3>
-   <div class="two"><label>Стартовая сумма, ₽<input id="initial" type="number" value="200000"></label><label>Пополнение в месяц, ₽<input id="topup" type="number" value="15000"></label></div>
-   <div class="two"><label>Горизонт, мес.<input id="months" type="number" value="24"></label><label>Доходность свободного кэша, % год<input id="liq" type="number" step="0.1" value="0"></label></div>
+   <div class="two"><label>Стартовая сумма, ₽<input id="initial" type="number" inputmode="numeric" value="200000"></label><label>Пополнение в месяц, ₽<input id="topup" type="number" inputmode="numeric" value="15000"></label></div>
+   <div class="two"><label>Горизонт, мес.<input id="months" type="number" inputmode="numeric" value="24"></label><label>Доходность свободного кэша, % год<input id="liq" type="number" inputmode="decimal" step="0.1" value="0"></label></div>
    <h3>Вклад для сравнения</h3>
    <label>Источник ставки<select id="depMode"><option value="cbr_avg">Средняя макс. ставка топ-10 (ЦБ), по сроку</option><option value="key_spread">Ключевая ставка ЦБ + спред банков</option><option value="manual">Ввести вручную</option></select></label>
-   <div class="two"><label>Спред к ключевой, п.п.<input id="spread" type="number" step="0.01"></label><label>Ставка вручную, %<input id="depManual" type="number" step="0.01" value="13"></label></div>
+   <div class="two"><label>Спред к ключевой, п.п.<input id="spread" type="number" inputmode="decimal" step="0.01"></label><label>Ставка вручную, %<input id="depManual" type="number" inputmode="decimal" step="0.01" value="13"></label></div>
    <button id="calc" class="btn">Рассчитать</button>
   </div>
   <div class="card glass"><h2>Результат</h2><div id="warn"></div><div id="kpis" class="kpis"></div><svg id="chart" viewBox="0 0 600 260" preserveAspectRatio="none"></svg><div class="legend"><i class="a"></i> Облигация <i class="b"></i> Вклад <i class="c"></i> Внесено</div></div>
@@ -34,11 +100,12 @@
 <section id="scan" class="tab"><div class="card glass">
  <h2>Технический анализ</h2>
  <div class="row">
-  <div class="seg" id="mkt"><button data-m="crypto" class="on">Крипта OKX (топ-100)</button><button data-m="stocks">Акции MOEX (1–2 уровень)</button></div>
+  <div class="seg" id="mkt"><button data-m="crypto" class="on">Крипта OKX (топ-100)</button><button data-m="stocks">Акции MOEX</button></div>
+  <span id="lvBox" hidden><label class="chk"><input type="checkbox" id="lv1" checked> 1 эшелон</label><label class="chk"><input type="checkbox" id="lv2" checked> 2 эшелон</label><label class="chk"><input type="checkbox" id="lv3"> 3 эшелон</label></span>
   <label class="inl">Подход<select id="mode"><option value="trend">По тренду</option><option value="reversion">От перекупленности / перепроданности</option></select></label>
   <button id="scanBtn" class="btn sm">Проанализировать всё</button><button id="sndBtn" class="btn sm ghost">Звук: выкл</button>
  </div>
- <p id="prog" class="hint">Нажмите «Проанализировать всё». Сигналы информационные, это не инвестиционная рекомендация.</p>
+ <p id="prog" class="hint">Нажмите «Проанализировать всё». Сигналы информационные, это не инвестиционная рекомендация. Облигации подбираются на вкладке «Облигации».</p>
  <div class="seg" id="view"><button data-v="long" class="on">Long</button><button data-v="short">Short</button><button data-v="fav">★ Избранное</button><button data-v="all">Все</button></div>
  <div class="scroll"><table id="scanTbl"></table></div>
 </div></section>
@@ -51,18 +118,22 @@
 <section id="crypto" class="tab">
  <div class="grid"><div class="card glass"><h2>Калькулятор сделки (OKX)</h2>
   <div class="two"><label>Направление<select id="dir"><option value="long">Long</option><option value="short">Short</option></select></label><label>Инструмент<select id="inst"><option value="spot">Спот / маржа</option><option value="swap">Бессрочный своп</option></select></label></div>
-  <div class="two"><label>Цена входа<input id="entry" type="number" step="any" value="531.55"></label><label>ATR (на вашем ТФ)<input id="atr" type="number" step="any" value="5.2"></label></div>
-  <div class="two"><label>Капитал, $<input id="equity" type="number" value="1600"></label><label>Риск на сделку, %<input id="riskPct" type="number" step="0.1" value="1"></label></div>
-  <div class="two"><label>Стоп, × ATR<input id="stopK" type="number" step="0.1" value="2"></label><label>Тейк, × ATR<input id="tpK" type="number" step="0.1" value="3"></label></div>
-  <div class="two"><label>Плечо<input id="lev" type="number" step="0.5" value="1"></label><label>Тип заявки<select id="ordType"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div>
-  <label>Держать, часов<input id="hold" type="number" value="24"></label>
+  <div class="two"><label>Цена входа<input id="entry" type="number" inputmode="decimal" step="any" value="531.55"></label><label>ATR (на вашем ТФ)<input id="atr" type="number" inputmode="decimal" step="any" value="5.2"></label></div>
+  <div class="two"><label>Капитал, $<input id="equity" type="number" inputmode="decimal" value="1600"></label><label>Риск на сделку, %<input id="riskPct" type="number" inputmode="decimal" step="0.1" value="1"></label></div>
+  <div class="two"><label>Стоп, × ATR<input id="stopK" type="number" inputmode="decimal" step="0.1" value="2"></label><label>Тейк, × ATR<input id="tpK" type="number" inputmode="decimal" step="0.1" value="3"></label></div>
+  <div class="two"><label>Плечо<input id="lev" type="number" inputmode="decimal" step="0.5" value="1"></label><label>Тип заявки<select id="ordType"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div>
+  <label>Держать, часов<input id="hold" type="number" inputmode="numeric" value="24"></label>
   <button id="calc2" class="btn">Рассчитать</button></div>
   <div class="card glass"><h2>План сделки</h2><div id="riskOut" class="kpis"></div><p class="hint">Размер позиции считается от допустимого убытка по стопу вместе с комиссиями и стоимостью удержания. Для расчёта по живым данным откройте актив на вкладке «Анализ».</p></div></div>
 </section>
 <section id="info" class="tab"><div class="card glass"><h2>Источники и актуальность</h2><div id="infoBox"></div></div></section>
 </main>
 <div id="sheet" class="sheet" hidden></div>
+<div id="bsheet" class="sheet" hidden></div>
+<div id="ldg" class="sheet" hidden><div class="panel ldg"><h2 id="ldgT">Подгрузка</h2><p id="ldgS" class="hint"></p><div class="bar2"><i id="ldgBar"></i></div><div class="row2"><b id="ldgPct">0 %</b><span id="ldgEta"></span></div><button class="btn" id="ldgX" hidden>Закрыть</button></div></div>
 <script type="module" src="src/theme.js"></script>
+<script type="module" src="src/ui.js"></script>
 <script type="module" src="src/app.js"></script>
+<script type="module" src="src/picker.js"></script>
 <script type="module" src="src/screener.js"></script>
 </body></html>
