@@ -24,3 +24,4 @@ if (sb) {
   paint();
 }
 setTimeout(() => { import('./fx.js').catch((e) => console.error('fx module', e)); }, 0);
+setTimeout(() => { import('./calendar.js').catch((e) => console.error('calendar module', e)); }, 0);
