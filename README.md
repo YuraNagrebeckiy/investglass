@@ -1,2 +1,8 @@
-# investglass
-Investment analytics workspace: bonds cash-flow simulator, MOEX and crypto screeners, risk management, trade journal and Telegram Mini App. Research prototype; no guaranteed returns or automated trading.
+# InvestGlass
+
+Этап 1: движок расчётов (облигации с реинвестом и пополнением, сравнение с вкладом по ставкам ЦБ, калькулятор риска сделки для OKX), тесты и обновление данных через GitHub Actions.
+
+Запуск тестов: `npm test`. Локально: `npx serve .` и открыть index.html.
+Публикация для разработки: Settings -> Pages -> Deploy from branch (main, /root). На бесплатном тарифе GitHub Pages для приватного репозитория недоступен.
+
+Не является инвестиционной рекомендацией. Сигналы и расчёты информационные, автоматической торговли нет.

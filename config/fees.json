@@ -1,0 +1,25 @@
+{
+ "updated": "2026-11-22",
+ "note": "Ставки брокеров собраны с сайтов ВТБ и Т-Инвестиций и обзоров. Перед сделкой сверяйте со своим тарифом: verify=true значит, что цифра не подтверждена вашим договором.",
+ "brokers": [
+  {"id": "vtb_gold", "name": "ВТБ «Мой онлайн», Золотой", "brokerRate": 0.0015, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "vtb.ru/personal/investicii/tarify"},
+  {"id": "vtb_silver", "name": "ВТБ «Мой онлайн», Серебряный", "brokerRate": 0.002, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "vtb.ru/personal/investicii/tarify"},
+  {"id": "vtb_base", "name": "ВТБ «Мой онлайн», Базовый", "brokerRate": 0.0025, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "vtb.ru/personal/investicii/tarify"},
+  {"id": "vtb_privilege", "name": "ВТБ «Привилегия» (до 0,10%)", "brokerRate": 0.001, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "тарифы ВТБ с 01.09.2026"},
+  {"id": "vtb_prime", "name": "ВТБ «Прайм» (0,06–0,08%)", "brokerRate": 0.0006, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "тарифы ВТБ с 01.08.2026"},
+  {"id": "vtb_pro", "name": "ВТБ «Профессиональный» (до 1 млн ₽/день)", "brokerRate": 0.00045, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 390, "monthlyFeeOnlyIfTrades": true, "verify": true, "source": "тарифы ВТБ с 01.08.2026"},
+  {"id": "tbank_investor", "name": "Т-Инвестиции «Инвестор»", "brokerRate": 0.003, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": false, "source": "tbank.ru/invest/tariffs (биржевая комиссия включена)"},
+  {"id": "tbank_trader", "name": "Т-Инвестиции «Трейдер»", "brokerRate": 0.0005, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 390, "monthlyFeeOnlyIfTrades": true, "verify": false, "source": "tbank.ru/invest/tariffs"},
+  {"id": "tbank_premium", "name": "Т-Инвестиции Premium", "brokerRate": 0.0004, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 2990, "monthlyFeeOnlyIfTrades": false, "verify": true, "source": "tbank.ru/invest/tariffs"},
+  {"id": "custom", "name": "Свой тариф", "brokerRate": 0.001, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": false, "source": "ввод вручную"}
+ ],
+ "crypto": {
+  "okx": {
+   "spot": {"maker": 0.0008, "taker": 0.001, "verify": false, "source": "okx.com/fees, Regular user"},
+   "swap": {"maker": 0.0002, "taker": 0.0005, "verify": true, "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"},
+   "borrowDailyUSDT": 0.000096,
+   "fundingRate8h": 0.0000071828,
+   "ratesSource": "okx.com/api/v5/public/interest-rate-loan-quota, funding-rate"
+  }
+ }
+}
