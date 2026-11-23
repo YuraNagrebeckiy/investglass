@@ -89,6 +89,50 @@ await step('moex-enrich', async () => {
   await writeFile('data/bonds.json', JSON.stringify(d));
 });
 
+const tbl = (js, t) => (js[t] ? js[t].data.map((r) => Object.fromEntries(js[t].columns.map((c, i) => [c, r[i]]))) : []);
+const cand = async (base, id, days) => {
+  const from = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+  const js = await (await j(`${ISS}/engines/${base}/securities/${id}/candles.json?iss.meta=off&interval=24&from=${from}`)).json();
+  return tbl(js, 'candles').map((r) => [Math.floor(Date.parse(r.begin.replace(' ', 'T') + '+03:00') / 1000), r.open, r.high, r.low, r.close, r.volume]);
+};
+
+await step('moex-fx', async () => {
+  const FX = {
+    USD: [['USDRUBF', 'futures/markets/forts'], ['USDRUB_TOM', 'currency/markets/selt/boards/CETS']],
+    EUR: [['EURRUBF', 'futures/markets/forts'], ['EURRUB_TOM', 'currency/markets/selt/boards/CETS']],
+    CNY: [['CNYRUBF', 'futures/markets/forts'], ['CNYRUB_TOM', 'currency/markets/selt/boards/CETS']],
+  };
+  const out = {};
+  for (const [code, list] of Object.entries(FX)) {
+    for (const [id, base] of list) {
+      try { const c = await cand(base, id, 420); if (c.length > 30) { out[code] = { source: id, candles: c }; break; } } catch { /* next source */ }
+    }
+  }
+  if (!Object.keys(out).length) throw new Error('no fx series');
+  await writeFile('data/fx.json', JSON.stringify({ updated: new Date().toISOString(), ...out }));
+  stats.fx = Object.keys(out);
+});
+
+await step('moex-stocks', async () => {
+  const js = await (await j(`${ISS}/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata`)).json();
+  const md = Object.fromEntries(tbl(js, 'marketdata').map((x) => [x.SECID, x]));
+  const list = tbl(js, 'securities').filter((s) => s.LISTLEVEL != null && [1, 2].includes(s.LISTLEVEL))
+    .map((s) => { const m = md[s.SECID] || {}; return { id: s.SECID, name: s.SHORTNAME || s.SECID, board: 'TQBR', level: s.LISTLEVEL, price: m.LAST || s.PREVPRICE, vol: m.VALTODAY || 0, chg24: m.LASTCHANGEPRC ?? 0 }; })
+    .sort((a, b) => b.vol - a.vol).slice(0, 40);
+  const candles = {};
+  let i = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const s = list[i++];
+      try { const c = await cand('stock/markets/shares/boards/TQBR', s.id, 420); if (c.length > 30) candles[s.id] = c; } catch { /* skip */ }
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  try { candles.IMOEX = await cand('stock/markets/index/boards/SNDX', 'IMOEX', 420); } catch { /* skip */ }
+  await writeFile('data/stocks.json', JSON.stringify({ updated: new Date().toISOString(), list: list.filter((s) => candles[s.id]), candles }));
+  stats.stocks = Object.keys(candles).length;
+});
+
 await mkdir('data', { recursive: true });
 await writeFile('data/status.json', JSON.stringify({ updated: new Date().toISOString(), log, stats }, null, 1));
 console.log(log.join('\n'));

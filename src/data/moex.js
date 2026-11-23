@@ -7,6 +7,14 @@ const table = (js, t) => (js[t] ? js[t].data.map((r) => Object.fromEntries(js[t]
 const get = async (u) => { const r = await fetch(u); if (!r.ok) throw new Error('MOEX ' + r.status); return r.json(); };
 const ts = (s) => Math.floor(Date.parse(s.replace(' ', 'T') + '+03:00') / 1000);
 
+const snaps = {};
+const snapshot = async (name) => {
+  if (snaps[name] === undefined) snaps[name] = await fetch(`data/${name}.json`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  return snaps[name];
+};
+const unpack = (a) => a.map((r) => ({ t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] }));
+export const usedSnapshot = { on: false };
+
 export async function stocks(levels = [1, 2]) {
   try {
     const js = await get(`${ISS}/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata`);
@@ -15,7 +23,9 @@ export async function stocks(levels = [1, 2]) {
       .map((s) => { const m = md[s.SECID] || {}; return { id: s.SECID, name: s.SHORTNAME || s.SECID, board: 'TQBR', level: s.LISTLEVEL, price: m.LAST || s.PREVPRICE, vol: m.VALTODAY || 0, chg24: m.LASTCHANGEPRC ?? 0 }; })
       .sort((a, b) => b.vol - a.vol);
     if (out.length) return out;
-  } catch { /* fallback below */ }
+  } catch { /* snapshot below */ }
+  const sn = await snapshot('stocks');
+  if (sn && sn.list && sn.list.length) { usedSnapshot.on = true; return sn.list.filter((s) => s.level == null || levels.includes(s.level)); }
   return FALLBACK.map((id) => ({ id, name: id, board: 'TQBR', level: null, price: 0, vol: 0, chg24: 0 }));
 }
 
@@ -51,7 +61,16 @@ async function rows(base, id, tf) {
 
 export async function candles(id, tf, kind = 'shares/boards/TQBR') {
   const base = kind === 'index' ? 'index/boards/SNDX' : kind;
-  return rows('stock/markets/' + base, id, tf);
+  try {
+    return await rows('stock/markets/' + base, id, tf);
+  } catch (e) {
+    if (tf === '1d') {
+      const sn = await snapshot('stocks');
+      const a = sn && sn.candles && sn.candles[id];
+      if (a && a.length) { usedSnapshot.on = true; return unpack(a); }
+    }
+    throw e;
+  }
 }
 
 export const benchmark = (tf = '1d') => candles('IMOEX', tf, 'index');
@@ -69,6 +88,11 @@ export async function fx(code, tf = '1d') {
       const c = await rows(base, id, tf);
       if (c.length > 30) return { candles: c, source: id };
     } catch (e) { err = e; }
+  }
+  const sn = tf === '1d' ? await snapshot('fx') : null;
+  if (sn && sn[code] && sn[code].candles.length > 30) {
+    usedSnapshot.on = true;
+    return { candles: unpack(sn[code].candles), source: sn[code].source + ', снимок от ' + new Date(sn.updated).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) };
   }
   throw err || new Error('нет данных ' + code);
 }
