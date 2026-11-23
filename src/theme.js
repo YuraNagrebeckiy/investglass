@@ -1,8 +1,17 @@
 const root = document.documentElement;
-const saved = localStorage.getItem('ig_theme') || 'light';
-root.dataset.theme = saved;
-document.getElementById('theme').addEventListener('click', () => {
-  const t = root.dataset.theme === 'light' ? 'dark' : 'light';
-  root.dataset.theme = t; localStorage.setItem('ig_theme', t);
+const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+const mode = () => localStorage.getItem('ig_theme') || 'auto';
+const eff = () => (mode() === 'auto' ? (mq && mq.matches ? 'dark' : 'light') : mode());
+function apply() {
+  root.dataset.theme = eff();
+  let m = document.querySelector('meta[name=theme-color]');
+  if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+  m.content = eff() === 'dark' ? '#1B1916' : '#F8F6F3';
   window.dispatchEvent(new Event('themechange'));
-});
+}
+export function setTheme(v) { localStorage.setItem('ig_theme', v); apply(); }
+export const themeMode = mode;
+apply();
+if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (mode() === 'auto') apply(); });
+const b = document.getElementById('theme');
+if (b) b.addEventListener('click', () => setTheme(eff() === 'light' ? 'dark' : 'light'));
