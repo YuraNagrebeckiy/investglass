@@ -1,8 +1,8 @@
 {
- "updated": "2026-11-22T21:05:57.716Z",
+ "updated": "2026-11-23T02:01:00.020Z",
  "log": [
   "ok okx",
-  "ok cbr-key-rate",
+  "FAIL cbr-key-rate: https://www.cbr.ru/hd_base/keyrate/ 403",
   "ok moex-bonds",
   "ok moex-enrich"
  ],
@@ -26,8 +26,8 @@
   "bonds": 2835,
   "enriched": {
    "targets": 1200,
-   "description": 1200,
-   "amortization": 1200
+   "description": 1154,
+   "amortization": 1150
   }
  }
 }
