@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildEvents, monthTotals, toIcs } from '../src/engine/calendar.js';
+import { buildEvents, monthTotals, toIcs, dayTotals } from '../src/engine/calendar.js';
 
 const sched = {
   coupons: [{ date: '2026-12-10', value: 10 }, { date: '2027-01-10', value: null }, { date: '2027-02-10', value: 12 }, { date: '2025-01-10', value: 9 }],
@@ -21,6 +21,13 @@ test('coupon is taxed, amortization is not, totals by month', () => {
   const feb = monthTotals(ev).find((m) => m.month === '2027-02');
   assert.equal(feb.amort, 5000);
   assert.ok(Math.abs(feb.couponNet - 52.2) < 1e-9);
+});
+
+test('quantity can grow over time (plan mode) and days are grouped', () => {
+  const grow = buildEvents(sched, (d) => (d < '2027-01-01' ? 2 : 10), { from: '2026-11-22', to: '2027-02-28', taxRate: 0, name: 'T', secid: 'X' });
+  assert.equal(grow.find((e) => e.date === '2026-12-10').gross, 20);
+  assert.equal(grow.find((e) => e.date === '2027-02-10' && e.type === 'coupon').gross, 120);
+  assert.equal(dayTotals(grow).get('2027-02-10').items.length, 2);
 });
 
 test('ics has one event per payment', () => {
