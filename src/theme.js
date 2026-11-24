@@ -15,4 +15,4 @@ apply();
 if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (mode() === 'auto') apply(); });
 const b = document.getElementById('theme');
 if (b) b.addEventListener('click', () => setTheme(eff() === 'light' ? 'dark' : 'light'));
-setTimeout(() => { import('./draw.js').then(() => import('./alerts.js')).catch((e) => console.error('alerts', e)); import('./jwin.js').catch((e) => console.error('jwin', e)); }, 300);
+setTimeout(() => { import('./draw.js').then(() => import('./alerts.js')).catch((e) => console.error('alerts', e)); }, 300);
