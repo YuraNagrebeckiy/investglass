@@ -16,3 +16,4 @@ if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (mode() 
 const b = document.getElementById('theme');
 if (b) b.addEventListener('click', () => setTheme(eff() === 'light' ? 'dark' : 'light'));
 setTimeout(() => { import('./draw.js').then(() => import('./alerts.js')).catch((e) => console.error('alerts', e)); }, 300);
+setTimeout(() => { import('./brokers.js').catch((e) => console.error('brokers', e)); }, 600);
