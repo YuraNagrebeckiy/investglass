@@ -96,7 +96,10 @@ function evalCur() {
 
 function feeRate() {
   const f = S.fees;
-  if (S.market === 'crypto') return f.crypto.okx[$('pInst').value][$('pOrd').value];
+  if (S.market === 'crypto') {
+    const ex = f.crypto[($('pEx') || {}).value || 'okx'] || f.crypto.okx;
+    return ex[$('pInst').value][$('pOrd').value];
+  }
   const b = f.brokers.find((x) => x.id === $('pBrk').value);
   return b.brokerRate + b.exchangeStock;
 }
@@ -115,7 +118,7 @@ function refresh() {
   let verdict = ev.overall;
   if (verdict === 'green' && reasons.length) verdict = 'yellow';
   const txt = { green: 'Зелёный: условия для входа выполнены', yellow: 'Жёлтый: не торопиться', red: 'Красный: не лезть' }[verdict];
-  $('shLights').innerHTML = `<div class="verdict ${verdict}">${txt}</div><table class="mini-t"><tr><th>ТФ</th><th>MACD</th><th>EMA</th><th>RSI</th><th>ATR</th></tr>${rows}</table>${reasons.length ? '<ul class="why">' + reasons.map((r) => `<li>${r}</li>`).join('') + '</ul>' : ''}`;
+  $('shLights').innerHTML = `<div class="verdict ${verdict}">${txt}</div><table class="mini-t"><tr><th>΢Φ</th><th>MACD</th><th>EMA</th><th>RSI</th><th>ATR</th></tr>${rows}</table>${reasons.length ? '<ul class="why">' + reasons.map((r) => `<li>${r}</li>`).join('') + '</ul>' : ''}`;
   const items = [['Вход', fx(last.c)], ['Стоп', fx(plan.stop)], ['Тейк', fx(plan.tp)], ['Объём', fx(plan.qty)], ['Позиция, ' + C.cur, fx(plan.notional)], ['Убыток по стопу', fx(plan.lossNet)], ['Прибыль по тейку', fx(plan.rewardNet)], ['R:R после затрат', plan.rrNet.toFixed(2)], ['Безубыток', fx(plan.breakeven)]];
   $('shPlan').innerHTML = items.map(([t, v]) => `<div class="k"><small>${t}</small><b>${v}</b></div>`).join('') + (plan.capped ? '<p class="warn">Размер ограничен капиталом и плечом.</p>' : '');
   S.cur.last = { ev, plan, verdict, price: last.c };
@@ -172,7 +175,8 @@ async function openSheet(a) {
   try { for (const tf of C.detail) a.full[tf] = await C.candles(a.id, tf); await ensureLib(); } catch (e) { sh.innerHTML = `<div class="panel"><p>Ошибка загрузки: ${e.message}</p><button class="btn" id="shClose">Закрыть</button></div>`; $('shClose').onclick = closeSheet; return; }
   S.cur = { a, dir: 'long', tf: S.market === 'crypto' ? '1h' : '1d', prev: null };
   const crypto = S.market === 'crypto';
-  const brk = !crypto ? `<label>Брокер<select id="pBrk">${S.fees.brokers.map((b) => `<option value="${b.id}">${b.name}</option>`).join('')}</select></label>` : `<div class="two"><label>Рынок<select id="pInst"><option value="spot">Спот / маржа</option><option value="swap">Своп</option></select></label><label>Заявка<select id="pOrd"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div><label>Плечо<input id="pLev" type="number" value="1" step="0.5"></label>`;
+  const exOpts = crypto && S.fees ? Object.entries(S.fees.crypto).map(([k, v]) => `<option value="${k}">${v.name || k}</option>`).join('') : '<option value="okx">OKX</option>';
+  const brk = !crypto ? `<label>Брокер<select id="pBrk">${S.fees.brokers.map((b) => `<option value="${b.id}">${b.name}</option>`).join('')}</select></label>` : `<label>Биржа (комиссии)<select id="pEx">${exOpts}</select></label><div class="two"><label>Рынок<select id="pInst"><option value="spot">Спот / маржа</option><option value="swap">Своп</option></select></label><label>Заявка<select id="pOrd"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div><label>Плечо<input id="pLev" type="number" value="1" step="0.5"></label>`;
   sh.innerHTML = `<div class="panel"><div class="sh-head"><div><h2>${a.name} <small>${fx(a.price)} ${C.cur}</small></h2><span id="shLive" class="hint"></span></div><div><button class="star ${S.favs.has(key(a)) ? 'on' : ''}" id="shFav">★</button><button class="mini" id="shClose">Закрыть</button></div></div>
   <div class="sh-grid"><div>
    <div class="seg" id="shDir"><button data-d="long" class="on">Long</button><button data-d="short">Short</button></div>
@@ -195,7 +199,7 @@ async function openSheet(a) {
   $('shSnd').onclick = () => { S.sound = !S.sound; $('shSnd').textContent = S.sound ? 'Звук: вкл' : 'Звук: выкл'; $('sndBtn').textContent = $('shSnd').textContent; beep(); };
   $('shEnter').onclick = () => {
     const { ev, plan, verdict, price } = S.cur.last;
-    journal.add({ market: S.market, symbol: a.id, dir: S.cur.dir, price, stop: plan.stop, tp: plan.tp, qty: plan.qty, mode: S.mode, consensus: ev.consensus, verdict, lights: { ...ev.indicators, overall: ev.overall }, perTf: ev.detail, plan, equity: num('pEq'), riskPct: num('pRisk') });
+    journal.add({ market: S.market, symbol: a.id, dir: S.cur.dir, price, stop: plan.stop, tp: plan.tp, qty: plan.qty, mode: S.mode, consensus: ev.consensus, verdict, lights: { ...ev.indicators, overall: ev.overall }, perTf: ev.detail, plan, equity: num('pEq'), riskPct: num('pRisk'), exchange: ($('pEx') || {}).value, inst: ($('pInst') || {}).value, ord: ($('pOrd') || {}).value, broker: ($('pBrk') || {}).value, lev: crypto ? num('pLev') || 1 : 1 });
     journal.render($('jTbl')); $('shEnter').textContent = 'Записано в журнал';
   };
   drawChart(); refresh(); startLive(); related(a);
