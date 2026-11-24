@@ -1,11 +1,11 @@
+import { getJson } from './net.js';
+
 const API = 'https://www.okx.com/api/v5';
 const BAR = { '5m': '5m', '15m': '15m', '30m': '30m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W', '1M': '1M' };
 const STABLE = /^(USDC|DAI|TUSD|FDUSD|USDE|USD1|PYUSD|USDG|EURC|USDT)-/;
 
 const get = async (p) => {
-  const r = await fetch(API + p);
-  if (!r.ok) throw new Error('OKX ' + r.status);
-  const j = await r.json();
+  const j = await getJson(API + p, { validate: (x) => x && x.code !== undefined });
   if (j.code !== '0') throw new Error('OKX ' + j.msg);
   return j.data;
 };

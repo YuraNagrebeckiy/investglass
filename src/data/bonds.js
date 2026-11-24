@@ -1,3 +1,5 @@
+import { getJson } from './net.js';
+
 const ISS = 'https://iss.moex.com/iss/engines/stock/markets/bonds/boards';
 const table = (js, t) => (js[t] ? js[t].data.map((r) => Object.fromEntries(js[t].columns.map((c, i) => [c, r[i]]))) : []);
 
@@ -33,9 +35,7 @@ export async function refreshLive(items, onP) {
     const seen = new Set();
     for (let start = 0; start < 6000;) {
       const u = `${ISS}/${board}/securities.json?iss.meta=off&iss.only=securities,marketdata&securities.columns=SECID,PREVPRICE,ACCRUEDINT,COUPONVALUE,NEXTCOUPON&marketdata.columns=SECID,LAST,YIELD,VALTODAY,NUMTRADES,BID,OFFER,DURATION&start=${start}`;
-      const r = await fetch(u);
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const js = await r.json();
+      const js = await getJson(u, { validate: (j) => j && typeof j === 'object' });
       const sec = table(js, 'securities');
       if (!sec.length) break;
       const md = Object.fromEntries(table(js, 'marketdata').map((x) => [x.SECID, x]));
