@@ -1,33 +1,18 @@
 {
- "updated": "2026-11-23T12:42:49.277Z",
+ "updated": "2026-11-24T02:17:35.856Z",
  "log": [
   "ok okx",
   "ok cbr-key-rate",
-  "ok moex-bonds",
-  "ok moex-enrich"
+  "FAIL moex-bonds: fetch failed",
+  "ok moex-enrich",
+  "FAIL moex-fx: no fx series",
+  "FAIL moex-stocks: fetch failed"
  ],
  "stats": {
-  "boards": [
-   "TQCB",
-   "TQOB",
-   "TQOD",
-   "TQOE",
-   "TQOY",
-   "TQRD",
-   "TQUD"
-  ],
-  "board_TQCB": 2686,
-  "board_TQOB": 60,
-  "board_TQOD": 7,
-  "board_TQOE": 0,
-  "board_TQOY": 1,
-  "board_TQRD": 83,
-  "board_TQUD": 0,
-  "bonds": 2837,
   "enriched": {
    "targets": 1200,
-   "description": 1200,
-   "amortization": 1200
+   "description": 0,
+   "amortization": 0
   }
  }
 }

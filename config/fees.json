@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23",
+ "updated": "2026-11-24",
  "note": "Ставки брокеров собраны с сайтов ВТБ и Т-Инвестиций и обзоров. Перед сделкой сверяйте со своим тарифом: verify=true значит, что цифра не подтверждена вашим договором.",
  "brokers": [
   {
@@ -121,7 +121,7 @@
     "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"
    },
    "borrowDailyUSDT": 0.000096,
-   "fundingRate8h": 0.0000021265496664,
+   "fundingRate8h": 0.0000544214071223,
    "ratesSource": "okx.com/api/v5/public/interest-rate-loan-quota, funding-rate"
   }
  }
