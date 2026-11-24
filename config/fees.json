@@ -22,11 +22,42 @@
  ],
  "crypto": {
   "okx": {
+   "name": "OKX",
    "spot": {"maker": 0.0008, "taker": 0.001, "verify": false, "source": "okx.com/fees, Regular user"},
    "swap": {"maker": 0.0002, "taker": 0.0005, "verify": true, "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"},
    "borrowDailyUSDT": 0.000096,
    "fundingRate8h": 0.0000544214071223,
    "ratesSource": "okx.com/api/v5/public/interest-rate-loan-quota, funding-rate"
+  },
+  "binance": {
+   "name": "Binance",
+   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: базовая ставка 0,10%, 0,075% при оплате BNB"},
+   "swap": {"maker": 0.0002, "taker": 0.0005, "verify": true, "source": "обзоры 2026: USDT-фьючерсы 0,02% / 0,05%"}
+  },
+  "bybit": {
+   "name": "Bybit",
+   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: VIP 0, 0,10% / 0,10%"},
+   "swap": {"maker": 0.0002, "taker": 0.00055, "verify": true, "source": "обзоры 2026: 0,02% / 0,055%"}
+  },
+  "bitget": {
+   "name": "Bitget",
+   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: 0,10% / 0,10%, скидка 20% с BGB"},
+   "swap": {"maker": 0.0002, "taker": 0.0006, "verify": true, "source": "обзоры 2026: 0,02% / 0,06%"}
+  },
+  "kucoin": {
+   "name": "KuCoin",
+   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: 0,10% / 0,10%, скидка 20% с KCS"},
+   "swap": {"maker": 0.0002, "taker": 0.0006, "verify": true, "source": "обзоры 2026: 0,02% / 0,06%"}
+  },
+  "mexc": {
+   "name": "MEXC",
+   "spot": {"maker": 0, "taker": 0.0005, "verify": true, "source": "обзоры 2026: 0% / 0,05%, бывают акции с нулевой комиссией"},
+   "swap": {"maker": 0, "taker": 0.0002, "verify": true, "source": "обзоры 2026: 0% / 0,02%, источники расходятся (до 0,04%)"}
+  },
+  "gate": {
+   "name": "Gate",
+   "spot": {"maker": 0.002, "taker": 0.002, "verify": true, "source": "обзоры расходятся: от 0,10% до 0,20%, взята консервативная 0,20%"},
+   "swap": {"maker": 0.00015, "taker": 0.0005, "verify": true, "source": "обзоры 2026: 0,015% / 0,05%"}
   }
  }
 }
