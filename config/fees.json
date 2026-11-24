@@ -2,62 +2,291 @@
  "updated": "2026-11-24",
  "note": "Ставки брокеров собраны с сайтов брокеров и обзоров. Перед сделкой сверяйте со своим тарифом: verify=true значит, что цифра не подтверждена вашим договором.",
  "brokers": [
-  {"id": "tbank_investor", "name": "Т-Инвестиции «Инвестор»", "brokerRate": 0.003, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": false, "source": "tbank.ru/invest/tariffs (биржевая комиссия включена)"},
-  {"id": "tbank_trader", "name": "Т-Инвестиции «Трейдер»", "brokerRate": 0.0005, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 390, "monthlyFeeOnlyIfTrades": true, "verify": false, "source": "tbank.ru/invest/tariffs"},
-  {"id": "tbank_premium", "name": "Т-Инвестиции Premium", "brokerRate": 0.0004, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 2990, "monthlyFeeOnlyIfTrades": false, "verify": true, "source": "tbank.ru/invest/tariffs"},
-  {"id": "sber_invest", "name": "СберИнвестиции «Инвестиционный»", "brokerRate": 0.003, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": true, "source": "обзор finuslugi.ru, не подтверждено официальным тарифом; биржевая комиссия, вероятно, включена"},
-  {"id": "alfa_investor", "name": "Альфа-Инвестиции «Инвестор»", "brokerRate": 0.003, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": true, "source": "alfabank.ru/alfa-investor/tariffs, по обзорам; биржевая комиссия, вероятно, включена"},
-  {"id": "alfa_trader", "name": "Альфа-Инвестиции «Трейдер» (от 0,049%, до 0,014%)", "brokerRate": 0.00049, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 199, "monthlyFeeOnlyIfTrades": true, "verify": true, "source": "alfabank.ru/alfa-investor/tariffs; ставка снижается с оборотом, биржа добавлена по типовой ставке"},
-  {"id": "bcs_investor", "name": "БКС «Инвестор» (покупка 0%, продажа 0,3%)", "brokerRate": 0.0015, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": true, "source": "bcs.ru/tariffs; значение 0,15% на сторону равно полной комиссии 0,3% на круг (покупка и продажа). Если облигацию держите до погашения, реальная комиссия ниже"},
-  {"id": "bcs_trader", "name": "БКС «Трейдер» (от 0,04%, до 0,008%)", "brokerRate": 0.0004, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 299, "monthlyFeeOnlyIfTrades": true, "verify": true, "source": "bcs.ru/tariffs; ставка снижается с оборотом или активами, биржа добавлена по типовой ставке"},
-  {"id": "vtb_gold", "name": "ВТБ «Мой онлайн», Золотой", "brokerRate": 0.0015, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "vtb.ru/personal/investicii/tarify"},
-  {"id": "vtb_silver", "name": "ВТБ «Мой онлайн», Серебряный", "brokerRate": 0.002, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "vtb.ru/personal/investicii/tarify"},
-  {"id": "vtb_base", "name": "ВТБ «Мой онлайн», Базовый", "brokerRate": 0.0025, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "vtb.ru/personal/investicii/tarify"},
-  {"id": "vtb_privilege", "name": "ВТБ «Привилегия» (до 0,10%)", "brokerRate": 0.001, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "тарифы ВТБ с 01.09.2026"},
-  {"id": "vtb_prime", "name": "ВТБ «Прайм» (0,06–0,08%)", "brokerRate": 0.0006, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "тарифы ВТБ с 01.08.2026"},
-  {"id": "vtb_pro", "name": "ВТБ «Профессиональный» (до 1 млн ₽/день)", "brokerRate": 0.00045, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 390, "monthlyFeeOnlyIfTrades": true, "verify": true, "source": "тарифы ВТБ с 01.08.2026"},
-  {"id": "finam_strategist", "name": "Финам «Стратег» (мин. 50 ₽ за поручение)", "brokerRate": 0.0005, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 0, "verify": true, "source": "broker.finam.ru/landing/tariff-learn-more; минимальная комиссия 50 ₽ в расчёте не учтена"},
-  {"id": "finam_investor", "name": "Финам «Инвестор»", "brokerRate": 0.00035, "exchangeBond": 0.00015, "exchangeStock": 0.0003, "monthlyFee": 200, "monthlyFeeOnlyIfTrades": false, "verify": true, "source": "broker.finam.ru/landing/tariff-learn-more"},
-  {"id": "custom", "name": "Свой тариф", "brokerRate": 0.001, "exchangeBond": 0, "exchangeStock": 0, "monthlyFee": 0, "verify": false, "source": "ввод вручную"}
+  {
+   "id": "tbank_investor",
+   "name": "Т-Инвестиции «Инвестор»",
+   "brokerRate": 0.003,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 0,
+   "verify": false,
+   "source": "tbank.ru/invest/tariffs (биржевая комиссия включена)"
+  },
+  {
+   "id": "tbank_trader",
+   "name": "Т-Инвестиции «Трейдер»",
+   "brokerRate": 0.0005,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 390,
+   "monthlyFeeOnlyIfTrades": true,
+   "verify": false,
+   "source": "tbank.ru/invest/tariffs"
+  },
+  {
+   "id": "tbank_premium",
+   "name": "Т-Инвестиции Premium",
+   "brokerRate": 0.0004,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 2990,
+   "monthlyFeeOnlyIfTrades": false,
+   "verify": true,
+   "source": "tbank.ru/invest/tariffs"
+  },
+  {
+   "id": "sber_invest",
+   "name": "СберИнвестиции «Инвестиционный»",
+   "brokerRate": 0.003,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "обзор finuslugi.ru, не подтверждено официальным тарифом; биржевая комиссия, вероятно, включена"
+  },
+  {
+   "id": "alfa_investor",
+   "name": "Альфа-Инвестиции «Инвестор»",
+   "brokerRate": 0.003,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "alfabank.ru/alfa-investor/tariffs, по обзорам; биржевая комиссия, вероятно, включена"
+  },
+  {
+   "id": "alfa_trader",
+   "name": "Альфа-Инвестиции «Трейдер» (от 0,049%, до 0,014%)",
+   "brokerRate": 0.00049,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 199,
+   "monthlyFeeOnlyIfTrades": true,
+   "verify": true,
+   "source": "alfabank.ru/alfa-investor/tariffs; ставка снижается с оборотом, биржа добавлена по типовой ставке"
+  },
+  {
+   "id": "bcs_investor",
+   "name": "БКС «Инвестор» (покупка 0%, продажа 0,3%)",
+   "brokerRate": 0.0015,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "bcs.ru/tariffs; значение 0,15% на сторону равно полной комиссии 0,3% на круг (покупка и продажа). Если облигацию держите до погашения, реальная комиссия ниже"
+  },
+  {
+   "id": "bcs_trader",
+   "name": "БКС «Трейдер» (от 0,04%, до 0,008%)",
+   "brokerRate": 0.0004,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 299,
+   "monthlyFeeOnlyIfTrades": true,
+   "verify": true,
+   "source": "bcs.ru/tariffs; ставка снижается с оборотом или активами, биржа добавлена по типовой ставке"
+  },
+  {
+   "id": "vtb_gold",
+   "name": "ВТБ «Мой онлайн», Золотой",
+   "brokerRate": 0.0015,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "vtb.ru/personal/investicii/tarify"
+  },
+  {
+   "id": "vtb_silver",
+   "name": "ВТБ «Мой онлайн», Серебряный",
+   "brokerRate": 0.002,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "vtb.ru/personal/investicii/tarify"
+  },
+  {
+   "id": "vtb_base",
+   "name": "ВТБ «Мой онлайн», Базовый",
+   "brokerRate": 0.0025,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "vtb.ru/personal/investicii/tarify"
+  },
+  {
+   "id": "vtb_privilege",
+   "name": "ВТБ «Привилегия» (до 0,10%)",
+   "brokerRate": 0.001,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "тарифы ВТБ с 01.09.2026"
+  },
+  {
+   "id": "vtb_prime",
+   "name": "ВТБ «Прайм» (0,06–0,08%)",
+   "brokerRate": 0.0006,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "тарифы ВТБ с 01.08.2026"
+  },
+  {
+   "id": "vtb_pro",
+   "name": "ВТБ «Профессиональный» (до 1 млн ₽/день)",
+   "brokerRate": 0.00045,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 390,
+   "monthlyFeeOnlyIfTrades": true,
+   "verify": true,
+   "source": "тарифы ВТБ с 01.08.2026"
+  },
+  {
+   "id": "finam_strategist",
+   "name": "Финам «Стратег» (мин. 50 ₽ за поручение)",
+   "brokerRate": 0.0005,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 0,
+   "verify": true,
+   "source": "broker.finam.ru/landing/tariff-learn-more; минимальная комиссия 50 ₽ в расчёте не учтена"
+  },
+  {
+   "id": "finam_investor",
+   "name": "Финам «Инвестор»",
+   "brokerRate": 0.00035,
+   "exchangeBond": 0.00015,
+   "exchangeStock": 0.0003,
+   "monthlyFee": 200,
+   "monthlyFeeOnlyIfTrades": false,
+   "verify": true,
+   "source": "broker.finam.ru/landing/tariff-learn-more"
+  },
+  {
+   "id": "custom",
+   "name": "Свой тариф",
+   "brokerRate": 0.001,
+   "exchangeBond": 0,
+   "exchangeStock": 0,
+   "monthlyFee": 0,
+   "verify": false,
+   "source": "ввод вручную"
+  }
  ],
  "crypto": {
   "okx": {
    "name": "OKX",
-   "spot": {"maker": 0.0008, "taker": 0.001, "verify": false, "source": "okx.com/fees, Regular user"},
-   "swap": {"maker": 0.0002, "taker": 0.0005, "verify": true, "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"},
+   "spot": {
+    "maker": 0.0008,
+    "taker": 0.001,
+    "verify": false,
+    "source": "okx.com/fees, Regular user"
+   },
+   "swap": {
+    "maker": 0.0002,
+    "taker": 0.0005,
+    "verify": true,
+    "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"
+   },
    "borrowDailyUSDT": 0.000096,
-   "fundingRate8h": 0.0000544214071223,
+   "fundingRate8h": 0.0000463314168567,
    "ratesSource": "okx.com/api/v5/public/interest-rate-loan-quota, funding-rate"
   },
   "binance": {
    "name": "Binance",
-   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: базовая ставка 0,10%, 0,075% при оплате BNB"},
-   "swap": {"maker": 0.0002, "taker": 0.0005, "verify": true, "source": "обзоры 2026: USDT-фьючерсы 0,02% / 0,05%"}
+   "spot": {
+    "maker": 0.001,
+    "taker": 0.001,
+    "verify": true,
+    "source": "обзоры 2026: базовая ставка 0,10%, 0,075% при оплате BNB"
+   },
+   "swap": {
+    "maker": 0.0002,
+    "taker": 0.0005,
+    "verify": true,
+    "source": "обзоры 2026: USDT-фьючерсы 0,02% / 0,05%"
+   }
   },
   "bybit": {
    "name": "Bybit",
-   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: VIP 0, 0,10% / 0,10%"},
-   "swap": {"maker": 0.0002, "taker": 0.00055, "verify": true, "source": "обзоры 2026: 0,02% / 0,055%"}
+   "spot": {
+    "maker": 0.001,
+    "taker": 0.001,
+    "verify": true,
+    "source": "обзоры 2026: VIP 0, 0,10% / 0,10%"
+   },
+   "swap": {
+    "maker": 0.0002,
+    "taker": 0.00055,
+    "verify": true,
+    "source": "обзоры 2026: 0,02% / 0,055%"
+   }
   },
   "bitget": {
    "name": "Bitget",
-   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: 0,10% / 0,10%, скидка 20% с BGB"},
-   "swap": {"maker": 0.0002, "taker": 0.0006, "verify": true, "source": "обзоры 2026: 0,02% / 0,06%"}
+   "spot": {
+    "maker": 0.001,
+    "taker": 0.001,
+    "verify": true,
+    "source": "обзоры 2026: 0,10% / 0,10%, скидка 20% с BGB"
+   },
+   "swap": {
+    "maker": 0.0002,
+    "taker": 0.0006,
+    "verify": true,
+    "source": "обзоры 2026: 0,02% / 0,06%"
+   }
   },
   "kucoin": {
    "name": "KuCoin",
-   "spot": {"maker": 0.001, "taker": 0.001, "verify": true, "source": "обзоры 2026: 0,10% / 0,10%, скидка 20% с KCS"},
-   "swap": {"maker": 0.0002, "taker": 0.0006, "verify": true, "source": "обзоры 2026: 0,02% / 0,06%"}
+   "spot": {
+    "maker": 0.001,
+    "taker": 0.001,
+    "verify": true,
+    "source": "обзоры 2026: 0,10% / 0,10%, скидка 20% с KCS"
+   },
+   "swap": {
+    "maker": 0.0002,
+    "taker": 0.0006,
+    "verify": true,
+    "source": "обзоры 2026: 0,02% / 0,06%"
+   }
   },
   "mexc": {
    "name": "MEXC",
-   "spot": {"maker": 0, "taker": 0.0005, "verify": true, "source": "обзоры 2026: 0% / 0,05%, бывают акции с нулевой комиссией"},
-   "swap": {"maker": 0, "taker": 0.0002, "verify": true, "source": "обзоры 2026: 0% / 0,02%, источники расходятся (до 0,04%)"}
+   "spot": {
+    "maker": 0,
+    "taker": 0.0005,
+    "verify": true,
+    "source": "обзоры 2026: 0% / 0,05%, бывают акции с нулевой комиссией"
+   },
+   "swap": {
+    "maker": 0,
+    "taker": 0.0002,
+    "verify": true,
+    "source": "обзоры 2026: 0% / 0,02%, источники расходятся (до 0,04%)"
+   }
   },
   "gate": {
    "name": "Gate",
-   "spot": {"maker": 0.002, "taker": 0.002, "verify": true, "source": "обзоры расходятся: от 0,10% до 0,20%, взята консервативная 0,20%"},
-   "swap": {"maker": 0.00015, "taker": 0.0005, "verify": true, "source": "обзоры 2026: 0,015% / 0,05%"}
+   "spot": {
+    "maker": 0.002,
+    "taker": 0.002,
+    "verify": true,
+    "source": "обзоры расходятся: от 0,10% до 0,20%, взята консервативная 0,20%"
+   },
+   "swap": {
+    "maker": 0.00015,
+    "taker": 0.0005,
+    "verify": true,
+    "source": "обзоры 2026: 0,015% / 0,05%"
+   }
   }
  }
 }
