@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="ui.css"></head>
 <body>
 <header class="bar glass"><b>InvestGlass</b><nav id="tabs">
-<button data-tab="bonds" class="on">Облигации</button><button data-tab="scan">Анализ</button><button data-tab="journal">Журнал</button><button data-tab="crypto">Риск</button><button data-tab="info">Данные</button></nav>
+<button data-tab="bonds" class="on">Облигации</button><button data-tab="scan">Анализ</button><button data-tab="journal">Журнал</button><button data-tab="info">Данные</button></nav>
 <button id="snd" class="mini" title="Звук уведомлений">🔕</button><button id="theme" class="mini" title="Светлая / тёмная тема">◐</button></header>
 <main>
 <section id="bonds" class="tab on">
@@ -105,17 +105,17 @@
   <label class="inl">Подход<select id="mode"><option value="trend">По тренду</option><option value="reversion">От перекупленности / перепроданности</option></select></label>
   <button id="scanBtn" class="btn sm">Проанализировать всё</button><button id="sndBtn" class="btn sm ghost">Звук: выкл</button>
  </div>
- <p id="prog" class="hint">Нажмите «Проанализировать всё». Сигналы информационные, это не инвестиционная рекомендация. Облигации подбираются на вкладке «Облигации».</p>
+ <p id="prog" class="hint">Нажмите «Проанализировать всё». Сигналы информационные, это не инвестиционная рекомендация. Облигации подбираются на вкладке «Облигации». Брокера и риск-менеджмент выбираются в окне актива после анализа.</p>
  <div class="seg" id="view"><button data-v="long" class="on">Long</button><button data-v="short">Short</button><button data-v="fav">★ Избранное</button><button data-v="all">Все</button></div>
  <div class="scroll"><table id="scanTbl"></table></div>
 </div></section>
 
 <section id="journal" class="tab"><div class="card glass"><h2>Журнал сделок</h2>
- <p class="hint">Записи хранятся в этом браузере. В момент входа сохраняются цена, стоп, тейк и состояние индикаторов по всем таймфреймам.</p>
+ <p class="hint">Записи хранятся в этом браузере. В момент входа сохраняются цена, стоп, тейк и состояние индикаторов по всем таймфреймам. Нажмите на запись, чтобы увидеть график, расчёт прибыли и советы по выходу.</p>
  <button id="jCsv" class="btn sm ghost">Скачать CSV</button>
  <div class="scroll"><table id="jTbl"></table></div></div></section>
 
-<section id="crypto" class="tab">
+<section id="crypto" class="tab" hidden>
  <div class="grid"><div class="card glass"><h2>Калькулятор сделки (OKX)</h2>
   <div class="two"><label>Направление<select id="dir"><option value="long">Long</option><option value="short">Short</option></select></label><label>Инструмент<select id="inst"><option value="spot">Спот / маржа</option><option value="swap">Бессрочный своп</option></select></label></div>
   <div class="two"><label>Цена входа<input id="entry" type="number" inputmode="decimal" step="any" value="531.55"></label><label>ATR (на вашем ТФ)<input id="atr" type="number" inputmode="decimal" step="any" value="5.2"></label></div>
@@ -124,7 +124,7 @@
   <div class="two"><label>Плечо<input id="lev" type="number" inputmode="decimal" step="0.5" value="1"></label><label>Тип заявки<select id="ordType"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div>
   <label>Держать, часов<input id="hold" type="number" inputmode="numeric" value="24"></label>
   <button id="calc2" class="btn">Рассчитать</button></div>
-  <div class="card glass"><h2>План сделки</h2><div id="riskOut" class="kpis"></div><p class="hint">Размер позиции считается от допустимого убытка по стопу вместе с комиссиями и стоимостью удержания. Для расчёта по живым данным откройте актив на вкладке «Анализ».</p></div></div>
+  <div class="card glass"><h2>План сделки</h2><div id="riskOut" class="kpis"></div><p class="hint">Размер позиции считается от допустимого убытка по стопу вместе с комиссиями и стоимостью удержания.</p></div></div>
 </section>
 <section id="info" class="tab"><div class="card glass"><h2>Источники и актуальность</h2><div id="infoBox"></div></div></section>
 </main>
