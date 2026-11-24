@@ -17,4 +17,4 @@ const b = document.getElementById('theme');
 if (b) b.addEventListener('click', () => setTheme(eff() === 'light' ? 'dark' : 'light'));
 setTimeout(() => { import('./draw.js').then(() => import('./alerts.js')).catch((e) => console.error('alerts', e)); }, 300);
 setTimeout(() => { import('./fxdetail.js').catch((e) => console.error('fxdetail', e)); }, 1000);
-setTimeout(() => { import('./plan.js').catch((e) => console.error('plan', e)); import('./sectors.js').catch((e) => console.error('sectors', e)); import('./funds.js').catch((e) => console.error('funds', e)); }, 1300);
+setTimeout(() => { import('./plan.js').catch((e) => console.error('plan', e)); import('./sectors.js').catch((e) => console.error('sectors', e)); import('./funds.js').catch((e) => console.error('funds', e)); import('./assetinfo.js').catch((e) => console.error('assetinfo', e)); }, 1300);
