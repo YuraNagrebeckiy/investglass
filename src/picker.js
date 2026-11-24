@@ -10,7 +10,8 @@ const rub = (x) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).
 const pct = (x, d = 2) => (Number.isFinite(x) ? (x * 100).toFixed(d) + ' %' : '—');
 const num = (id) => parseFloat($(id).value) || 0;
 const chk = (id) => $(id).checked;
-const ST = { raw: [], items: [], byId: new Map(), sel: store('ig_bsel', []), meta: null, fees: null, rates: null, last: [] };
+const ST = { raw: [], items: [], byId: new Map(), sel: store('ig_bsel', []), meta: null, fees: null, rates: null, last: [], port: null };
+window.IG = { ST };
 
 let t0 = 0;
 function ldgOpen(title) { $('ldg').hidden = false; $('ldgT').textContent = title; $('ldgX').hidden = true; t0 = performance.now(); ldg(0, 'Запускаю…'); }
@@ -125,22 +126,21 @@ function openBond(id) {
   <p>${tags(b)}</p>
   <div class="note">Оценка риска строится по эшелону, спреду доходности к ключевой ставке и ликвидности. Это не кредитный рейтинг. Рейтинг АКРА или Эксперт РА, отчётность и новости эмитента проверьте по ссылкам.</div>
   <h3>Новости и документы</h3><ul class="links">${links(b)}</ul><p class="hint">Автоматическая лента новостей по бумаге появится на следующем этапе.</p>
-  <button class="btn" id="bsAdd">${isSel(id) ? 'Убрать из отобранных' : 'Отобрать'}</button>
-  ${isSel(id) ? '<button class="btn ghost" id="bsCalc">Открыть в калькуляторе</button>' : ''}</div>`;
+  <button class="btn" id="bsAdd">${isSel(id) ? 'Убрать из отобранных' : 'Отобрать'}</button></div>`;
   $('bsClose').onclick = () => { sh.hidden = true; };
   $('bsAdd').onclick = () => { toggleSel(id); sh.hidden = true; };
-  if ($('bsCalc')) $('bsCalc').onclick = () => { sh.hidden = true; $('bPick').value = id; fillCalc(id); $('calcCard').scrollIntoView({ behavior: 'smooth' }); };
 }
 
 function calcPortfolio() {
   const sel = ST.sel.map((x) => ({ b: ST.byId.get(x.s), w: +x.w || 0 })).filter((x) => x.b && x.w > 0);
-  if (!sel.length) { $('pRes').innerHTML = '<p class="hint">Отберите бумаги и проверьте доли.</p>'; return; }
+  if (!sel.length) { ST.port = null; $('pRes').innerHTML = '<p class="hint">Отберите бумаги и проверьте доли.</p>'; return; }
   const term = $('pTerm').value;
   const months = term === 'mat' ? Math.min(120, Math.max(1, ...sel.map((x) => x.b.mon ?? 12))) : +term;
   const br = ST.fees.brokers.find((x) => x.id === $('pBrk').value);
   const shared = { initial: num('pInit'), topup: num('pTop'), months, taxRate: num('pTax') / 100, taxMode: $('pTaxMode').value, liquidate: term !== 'mat', feeRate: br.brokerRate, exchangeRate: br.exchangeBond, monthlyFee: br.monthlyFee, monthlyFeeOnlyIfTrades: !!br.monthlyFeeOnlyIfTrades, liquidityRate: num('pLiq') / 100 };
   const items = sel.map((x) => ({ name: x.b.name, weight: x.w, params: { face: x.b.face, pricePct: x.b.pricePct, accrued: x.b.accrued, coupon: x.b.coupon, payPerYear: x.b.ppy || 12, maturityMonth: x.b.mon != null && x.b.mon <= months ? Math.max(1, x.b.mon) : null } }));
   const r = simulatePortfolio(items, shared);
+  ST.port = { sel, months, term, shared, br, r };
   const taxNote = shared.taxMode === 'end' ? `к уплате при выводе: ${rub(r.taxDeferred)}` : `удержан по ходу: ${rub(r.taxes)}`;
   const k = [['Капитал в конце (после налога и выхода)', rub(r.equityNet)], ['Внесено', rub(r.contributed)], ['Прибыль', rub(r.profit)], ['Налог', taxNote], ['Комиссии брокера', rub(r.fees + r.exitFee)], ['Чистые купоны', rub(r.couponNet)], ['Доходность в год (IRR)', pct(r.annualReturn)], ['Срок', months + ' мес.']];
   const total = sel.reduce((s, x) => s + x.w, 0) || 1;
@@ -153,6 +153,7 @@ function calcPortfolio() {
   ${div.balance.length ? `<p>Для баланса (2 эшелон, другой эмитент):</p><ul class="sug">${div.balance.map(li).join('')}</ul>` : ''}
   <p class="hint">Допущения: цена бумаги не меняется, купон приходит равными частями, свободные деньги растут по ставке ликвидности и идут на покупку целых бумаг.</p>
   <div class="scroll"><table><tr><th>Мес.</th><th>Внесено</th><th>Кэш</th><th>Бумаги</th><th>Купоны</th><th>Капитал</th></tr>${r.rows.map((x) => `<tr><td>${x.month}</td><td>${rub(x.contributed)}</td><td>${rub(x.cash)}</td><td>${rub(x.market)}</td><td>${rub(x.couponNet)}</td><td>${rub(x.equity)}</td></tr>`).join('')}</table></div>`;
+  document.dispatchEvent(new CustomEvent('ig:portfolio'));
 }
 
 async function init() {
