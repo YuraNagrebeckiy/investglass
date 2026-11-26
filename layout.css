@@ -1,0 +1,17 @@
+html{scroll-padding-top:96px}
+.bar{max-width:1280px;margin-left:auto;margin-right:auto}
+nav button{padding:9px 12px}
+.panel{overflow-wrap:anywhere}
+.sh-head{position:sticky;top:0;z-index:3;background:var(--sheet);padding:4px 0 8px;margin-top:-4px}
+.two>label,.three>label{min-width:0}
+.chk{align-items:flex-start;line-height:1.35}
+.row>.btn.sm{flex:1 1 auto}
+.tp,.fwr,.chip{overflow:hidden}
+.tp b,.fwr b,.chip b{overflow-wrap:anywhere}
+td,th{padding:8px 9px}
+input[type=search]{-webkit-appearance:none;appearance:none}
+.scroll{max-width:100%}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+@media(max-width:860px){.sh-grid aside{order:2}}
+@media(max-width:520px){.row>.btn.sm{flex:1 1 140px}.card{padding:14px}h3{margin-top:14px}}
+@media(max-width:420px){nav button{padding:8px 10px;font-size:13px}.logo{font-size:22px}h2{font-size:18px}.k b{font-size:15px}.bi .r b{font-size:17px}.seg button{padding:7px 11px;font-size:13px}.btn{font-size:14px}}
