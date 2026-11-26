@@ -20,7 +20,7 @@ apply();
 if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (mode() === 'auto') apply(); });
 const b = document.getElementById('theme');
 if (b) b.addEventListener('click', () => setTheme(eff() === 'light' ? 'dark' : 'light'));
-setTimeout(() => { import('./login.js').catch((e) => console.error('login', e)); }, 0);
+setTimeout(() => { import('./login.js').then(() => import('./sheetsync.js')).catch((e) => console.error('login', e)); }, 0);
 setTimeout(() => { import('./account.js').catch((e) => console.error('account', e)); }, 250);
 setTimeout(() => { import('./draw.js').then(() => import('./alerts.js')).then(() => import('./patterns.js')).catch((e) => console.error('alerts', e)); import('./scansearch.js').catch((e) => console.error('scansearch', e)); }, 300);
 setTimeout(() => { import('./fxdetail.js').catch((e) => console.error('fxdetail', e)); }, 1000);
