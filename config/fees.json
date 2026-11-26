@@ -195,7 +195,7 @@
     "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"
    },
    "borrowDailyUSDT": 0.000096,
-   "fundingRate8h": 0.0000932349833723,
+   "fundingRate8h": 0.000048306794208,
    "ratesSource": "okx.com/api/v5/public/interest-rate-loan-quota, funding-rate"
   },
   "binance": {
