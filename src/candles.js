@@ -54,6 +54,7 @@ function scan(cs) {
   const seen = new Set();
   return res.filter((r) => { const k = r.name; if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => b.i - a.i || b.len - a.len).slice(0, 6);
 }
+export { scan, detect };
 
 const css = document.createElement('style');
 css.textContent = '#cdBox{border-radius:18px;background:var(--kpi);padding:10px 12px;margin:10px 0}#cdBox h3{margin:2px 0 6px}.cd-sum{font-size:13px;margin:4px 0 6px}.cd-l{list-style:none;margin:0;padding:0}.cd-l li{padding:7px 9px;margin:4px 0;border-radius:12px;background:var(--field);border-left:4px solid var(--l4);cursor:pointer;font-size:13px}.cd-l li.bull{border-left-color:var(--ok)}.cd-l li.bear{border-left-color:var(--bad)}.cd-l li b{font-weight:600}.cd-l li small{color:var(--mut);margin-left:6px}.cd-l li p{margin:3px 0 0;color:var(--mut)}.cd-l li em{display:none;margin-top:4px;font-style:normal;color:var(--txt)}.cd-l li.open em{display:block}';
