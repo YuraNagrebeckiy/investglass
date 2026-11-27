@@ -9,16 +9,17 @@ const store = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d;
 const CODES = ['USD', 'EUR', 'CNY'];
 const COLOR = { red: '#dc2626', green: '#16a34a', yellow: '#d97706', gray: '#64748b' };
 const STOCKS = ['SBER', 'GAZP', 'LKOH', 'ROSN', 'NVTK', 'TATN', 'GMKN', 'PLZL', 'CHMF', 'NLMK', 'PHOR', 'MGNT', 'AFLT', 'MTSS', 'T', 'MOEX', 'YDEX'];
-const S = { custom: store('ig_fxcustom', []), res: {}, prev: store('ig_fxstate', {}), busy: false, timer: null };
+const S = { custom: store('ig_fxcustom', []), res: {}, t0: {}, prev: store('ig_fxstate', {}), busy: false, busyAt: 0, timer: null, retry: null };
 const all = () => [...CODES, ...S.custom];
 const label = (c) => NAMES[c] || c;
+const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
 
 const css = document.createElement('style');
 css.textContent = `.fxb{margin:10px 12px 0;padding:12px 14px;border-radius:16px;color:#fff;font-size:14px;cursor:pointer}.fxb b{display:block;font-size:16px}
 .fxc{margin:12px 0}.fxc .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.fxc .px{font-size:26px;font-weight:700}
 .fxt{display:inline-block;padding:3px 10px;border-radius:12px;color:#fff;font-size:13px;margin:6px 0}.fxc svg{width:100%;height:120px;margin:6px 0}
 .fxs{width:100%;font-size:13px;border-collapse:collapse}.fxs td,.fxs th{padding:5px 6px;text-align:right}.fxs td:first-child,.fxs th:first-child{text-align:left}
-.pos{color:#16a34a}.neg{color:#dc2626}.fxl li{margin:6px 0}`;
+.pos{color:#16a34a}.neg{color:#dc2626}.fxl li{margin:6px 0}.fxld{display:flex;align-items:center;gap:10px}.fxld i{width:16px;height:16px;border-radius:50%;border:2px solid var(--l3);border-top-color:var(--acc);animation:fxspin .9s linear infinite;flex:none}@keyframes fxspin{to{transform:rotate(360deg)}}`;
 document.head.appendChild(css);
 
 const nav = $('tabs'), main = document.querySelector('main');
@@ -72,7 +73,8 @@ async function loadCustom(code) {
   const from = new Date(Date.now() - 420 * 864e5).toISOString().slice(0, 10);
   for (const base of ['futures/markets/forts', 'currency/markets/selt/boards/CETS']) {
     try {
-      const r = await fetch(`https://iss.moex.com/iss/engines/${base}/securities/${encodeURIComponent(code)}/candles.json?iss.meta=off&interval=24&from=${from}`);
+      const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
+      const r = await fetch(`https://iss.moex.com/iss/engines/${base}/securities/${encodeURIComponent(code)}/candles.json?iss.meta=off&interval=24&from=${from}`, { signal: c.signal }).finally(() => clearTimeout(t));
       const js = await r.json(), col = js.candles.columns, ix = (n) => col.indexOf(n);
       const cs = js.candles.data.map((d) => ({ t: Math.floor(Date.parse(d[ix('begin')].replace(' ', 'T') + '+03:00') / 1000), o: d[ix('open')], h: d[ix('high')], l: d[ix('low')], c: d[ix('close')], v: d[ix('volume')] }));
       if (cs.length > 30) return { candles: cs, source: code };
@@ -90,12 +92,20 @@ function chart(cs, v) {
   return `<svg viewBox="0 0 600 120" preserveAspectRatio="none">${line(m + 1.5 * sd, '#dc2626')}${line(m, '#8a99bd')}${line(m - 1.5 * sd, '#16a34a')}<path d="${path}" fill="none" stroke="#4f74f5" stroke-width="2.5"/><circle cx="600" cy="${Y(c[n]).toFixed(1)}" r="4" fill="#4f74f5"/></svg>`;
 }
 
+function waitText(code) {
+  const sec1 = Math.round((Date.now() - (S.t0[code] || Date.now())) / 1000);
+  const n = window.__igNet, pend = n ? [...n.pend.values()].filter((v) => /Мосбиржи|ЦБ|прокси/.test(v.l)).map((v) => v.l) : [];
+  const now = pend.length ? `Сейчас: ${[...new Set(pend)].slice(0, 2).join(', ')}.` : '';
+  const hint = sec1 > 8 ? ' Мосбиржа отвечает не у всех операторов, поэтому приложение параллельно берёт официальные курсы ЦБ.' : '';
+  return `Загружаю… ${sec1} с. ${now}${hint}`;
+}
+
 function render() {
   const alerts = [];
   $('fxCards').innerHTML = all().map((code) => {
     const r = S.res[code];
-    if (!r) return `<div class="card glass fxc"><h2>${esc(label(code))}</h2><p class="hint">Загружаю…</p></div>`;
-    if (r.err) return `<div class="card glass fxc"><h2>${esc(label(code))}</h2><p class="bad">${esc(r.err)}</p>${S.custom.includes(code) ? `<button class="mini" data-rm="${esc(code)}">Убрать</button>` : ''}</div>`;
+    if (!r) return `<div class="card glass fxc"><div class="fxld"><i></i><h2 style="margin:0">${esc(label(code))}</h2></div><p class="hint" data-ld="${esc(code)}">${esc(waitText(code))}</p></div>`;
+    if (r.err) return `<div class="card glass fxc"><h2>${esc(label(code))}</h2><p class="bad">Не удалось загрузить.</p><p class="hint">${esc(r.err)}</p><p class="hint">Так бывает, когда оператор или сеть блокируют Мосбиржу. Попробуйте другой интернет (Wi-Fi или мобильный) или VPN. Приложение будет повторять попытку само.</p><div class="row"><button class="mini" data-retry="1">Повторить сейчас</button>${S.custom.includes(code) ? `<button class="mini" data-rm="${esc(code)}">Убрать</button>` : ''}</div></div>`;
     const { v, m } = r, prev = r.cs[r.cs.length - 2]?.c, chg = prev ? ((v.px / prev - 1) * 100).toFixed(2) : '—';
     if (v.state === 'over' || v.state === 'under') alerts.push(m);
     return `<div class="card glass fxc"><div class="top"><h2>${esc(label(code))}</h2><span class="px">${v.px.toFixed(2)} ₽</span></div>
@@ -107,20 +117,27 @@ function render() {
   ban.innerHTML = alerts.map((m) => `<div class="fxb" style="background:${COLOR[m.level]}"><b>${esc(m.title)}</b>Подробнее на вкладке «Валюты»</div>`).join('');
 }
 
+async function loadOne(code) {
+  S.t0[code] = Date.now();
+  try {
+    const r = await withTimeout(CODES.includes(code) ? loadFx(code, '1d') : loadCustom(code), 45000, 'Источники не ответили за 45 с.');
+    const v = valuation(r.candles);
+    S.res[code] = v.state === 'nodata' ? { err: `Получено слишком мало данных: ${r.candles.length} дн., нужно не меньше 60.` } : { v, src: r.source, cs: r.candles, m: message(code, v) };
+  } catch (e) { S.res[code] = { err: (e && e.message) || 'нет связи' }; }
+  render();
+}
+
 async function refresh() {
-  if (S.busy) return;
-  S.busy = true; $('fxInfo').textContent = 'Обновляю…';
-  await Promise.all(all().map(async (code) => {
-    try {
-      const r = CODES.includes(code) ? await loadFx(code, '1d') : await loadCustom(code);
-      const v = valuation(r.candles);
-      S.res[code] = { v, src: r.source, cs: r.candles, m: message(code, v) };
-    } catch (e) { S.res[code] = { err: `Нет данных: ${e.message}. Источник мог измениться или быть недоступен из браузера.` }; }
-  }));
-  let up = false, down = false;
+  if (S.busy && Date.now() - S.busyAt < 50000) return;
+  S.busy = true; S.busyAt = Date.now(); clearTimeout(S.retry);
+  $('fxInfo').textContent = 'Обновляю…';
+  for (const c of all()) { if (!S.res[c] || S.res[c].err) { delete S.res[c]; S.t0[c] = Date.now(); } }
+  render();
+  await Promise.all(all().map(loadOne));
+  let up = false, down = false, bad = 0;
   for (const code of all()) {
     const r = S.res[code];
-    if (!r || r.err) continue;
+    if (!r || r.err) { bad++; continue; }
     const old = S.prev[code];
     if (old !== undefined && old !== r.v.state) { if (r.v.state === 'over') down = true; if (r.v.state === 'under') up = true; }
     S.prev[code] = r.v.state;
@@ -129,14 +146,17 @@ async function refresh() {
   render();
   if (down) { beep(520, 220); setTimeout(() => beep(380, 300), 260); }
   if (up) { beep(380, 220); setTimeout(() => beep(520, 300), 260); }
-  $('fxInfo').textContent = 'Обновлено ' + new Date().toLocaleTimeString('ru-RU');
+  $('fxInfo').textContent = (bad ? `Загружено ${all().length - bad} из ${all().length}, повторю через 20 с. ` : '') + 'Обновлено ' + new Date().toLocaleTimeString('ru-RU');
   S.busy = false;
+  if (bad) S.retry = setTimeout(refresh, 20000);
 }
 
 function schedule() {
   clearInterval(S.timer);
   if ($('fxAuto').checked) S.timer = setInterval(refresh, 30000);
 }
+
+setInterval(() => { document.querySelectorAll('[data-ld]').forEach((p) => { p.textContent = waitText(p.dataset.ld); }); }, 1000);
 
 async function deps() {
   const out = $('fxDeps');
@@ -163,7 +183,7 @@ async function deps() {
   <p class="hint">Корреляция дневных изменений за последние ≈130 торговых дней: от −1 до +1. Положительное значение означает, что акция в рублях обычно растёт вместе с валютой, отрицательное означает движение в разные стороны. Связь не доказывает причину и меняется со временем.</p>`;
 }
 
-$('fxRefresh').onclick = refresh;
+$('fxRefresh').onclick = () => { S.busy = false; refresh(); };
 $('fxAuto').onchange = schedule;
 $('fxDepBtn').onclick = deps;
 $('fxAdd').onclick = () => {
@@ -171,6 +191,7 @@ $('fxAdd').onclick = () => {
   if (c && !all().includes(c)) { S.custom.push(c); localStorage.setItem('ig_fxcustom', JSON.stringify(S.custom)); $('fxCode').value = ''; refresh(); }
 };
 sec.addEventListener('click', (e) => {
+  if (e.target.dataset.retry) { S.busy = false; refresh(); return; }
   const c = e.target.dataset.rm;
   if (c) { e.preventDefault(); S.custom = S.custom.filter((x) => x !== c); delete S.res[c]; delete S.prev[c]; localStorage.setItem('ig_fxcustom', JSON.stringify(S.custom)); render(); }
 });
