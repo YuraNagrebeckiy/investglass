@@ -1,4 +1,5 @@
 import { getJson, net } from './net.js';
+import { sheetFx } from './cloudfx.js';
 
 const ISS = 'https://iss.moex.com/iss';
 const IV = { '10m': 10, '1h': 60, '1d': 24, '1w': 7, '1M': 31 };
@@ -139,6 +140,15 @@ function cbrSeries() {
 }
 
 const fxCache = {};
+const saveLast = (code, r) => { try { localStorage.setItem('fxlast_' + code, JSON.stringify({ t: Date.now(), source: r.source, c: r.candles.slice(-300).map((x) => [x.t, x.o, x.h, x.l, x.c, x.v]) })); } catch { /* quota */ } };
+const loadLast = (code) => {
+  try {
+    const o = JSON.parse(localStorage.getItem('fxlast_' + code));
+    if (o && o.c && o.c.length > 60) return { candles: unpack(o.c), source: 'последние данные, сохранённые на этом устройстве ' + new Date(o.t).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) + ' (' + o.source + ')' };
+  } catch { /* none */ }
+  return null;
+};
+
 export async function fx(code, tf = '1d') {
   const day = tf === '1d', hit = fxCache[code];
   if (day && hit && Date.now() - hit.t < 45000) return hit.r;
@@ -147,7 +157,7 @@ export async function fx(code, tf = '1d') {
     for (const [id, base] of FX[code]) {
       try {
         const c = await rows(base, id, tf, day ? { timeout: 4500, proxyMs: 6000 } : undefined);
-        if (c.length > 30) { const r = { candles: c, source: id + (net.via !== 'напрямую' ? ', ' + net.via : '') }; if (day) fxCache[code] = { t: Date.now(), r }; return r; }
+        if (c.length > 30) { const r = { candles: c, source: id + (net.via !== 'напрямую' ? ', ' + net.via : '') }; if (day) { fxCache[code] = { t: Date.now(), r }; saveLast(code, r); } return r; }
       } catch (e) { err = e; }
     }
     throw err || new Error('нет данных ' + code);
@@ -162,16 +172,24 @@ export async function fx(code, tf = '1d') {
     usedSnapshot.on = true;
     return { candles: unpack(sn[code].candles), source: sn[code].source + ', снимок от ' + new Date(sn.updated).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) };
   }
-  let cbrErr = null;
-  try {
+  const viaCbr = (async () => {
     const s = await cbrSeries(), a = s[code];
-    if (a && a.length > 60) { usedSnapshot.on = true; return { candles: a.map(([t, v]) => ({ t, o: v, h: v, l: v, c: v, v: 0 })), source: 'официальный курс ЦБ РФ, только закрытие за ' + a.length + ' дн. (Мосбиржа не ответила)' }; }
-  } catch (e) { cbrErr = e; }
-  const cm = `ЦБ: ${cbrErr ? cbrErr.message : 'мало данных'}`;
+    if (a && a.length > 60) return { candles: a.map(([t, v]) => ({ t, o: v, h: v, l: v, c: v, v: 0 })), source: 'официальный курс ЦБ РФ, только закрытие за ' + a.length + ' дн. (Мосбиржа не ответила)' };
+    throw new Error('мало данных');
+  })();
+  const viaSheet = sheetFx(code);
+  viaCbr.catch(() => {}); viaSheet.catch(() => {});
+  let res = await Promise.race([viaCbr.catch(() => null), sleep(2500).then(() => null)]), cbrErr = null, shErr = null;
+  if (!res) { try { res = await viaSheet; } catch (e) { shErr = e; } }
+  if (!res) { const l0 = loadLast(code); if (l0) { usedSnapshot.on = true; return l0; } }
+  if (!res) { try { res = await viaCbr; } catch (e) { cbrErr = e; } }
+  if (res) { usedSnapshot.on = true; saveLast(code, res); return res; }
+  const cm = `ЦБ: ${cbrErr ? cbrErr.message : 'нет ответа'}. Google Таблица: ${shErr ? shErr.message : 'нет ответа'}`;
   if (first.late) {
-    const w = await Promise.race([settle, sleep(10000).then(() => ({ e: new Error('не ответила за 10 с дополнительно') }))]);
+    const w = await Promise.race([settle, sleep(8000).then(() => ({ e: new Error('не ответила за 8 с дополнительно') }))]);
     if (w.r) return w.r;
-    throw new Error(`Мосбиржа: ${w.e.message}. ${cm}`);
   }
-  throw new Error(`Мосбиржа: ${first.e ? first.e.message : 'нет данных'}. ${cm}`);
+  const last = loadLast(code);
+  if (last) { usedSnapshot.on = true; return last; }
+  throw new Error(`Мосбиржа: ${first.e ? first.e.message : 'не ответила'}. ${cm}`);
 }
