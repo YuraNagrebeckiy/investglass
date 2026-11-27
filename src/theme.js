@@ -1,5 +1,5 @@
 const BOOT_OFF = localStorage.getItem('boot_off') === '1';
-const B = { t0: performance.now(), steps: new Map(), total: 19, done: 0, last: performance.now(), closed: false, prog: 0 };
+const B = { t0: performance.now(), steps: new Map(), total: 22, done: 0, last: performance.now(), closed: false, prog: 0 };
 const WHY = { moex: 'Мосбиржа отвечает медленно или недоступна из вашей сети: приложение пробует запасные пути.', cbr: 'Запрашиваю официальные курсы ЦБ РФ.', ecb: 'Запрашиваю дневные курсы мировых валют ЕЦБ.', okx: 'Запрашиваю котировки криптобиржи OKX.', sheet: 'Загружаю и сверяю ваши данные с Google Таблицей.', lib: 'Скачиваю библиотеку графиков.', bonds: 'База облигаций большая, при медленном интернете она грузится дольше.', cfg: 'Загружаю справочники: тарифы, ставки, вклады.', app: 'Загружаю файлы приложения.', other: 'Загружаю дополнительные данные.' };
 
 function labelFor(u) {
@@ -7,7 +7,7 @@ function labelFor(u) {
     const x = new URL(u, location.href);
     let h = x.host, p = x.pathname, via = false;
     if (/corsproxy|allorigins|codetabs|thingproxy/.test(h)) { via = true; const inner = decodeURIComponent(x.href); const m = /https?:\/\/([^/?]+)(\/[^?\s]*)?/.exec(inner.slice(inner.indexOf('http', 8))); if (m) { h = m[1]; p = m[2] || ''; } }
-    const k = h === 'iss.moex.com' ? ['moex', 'Котировки Мосбиржи'] : /cbr-xml-daily/.test(h) ? ['cbr', 'Курсы ЦБ РФ'] : /frankfurter/.test(h) ? ['ecb', 'Мировые валютные пары (ЕЦБ)'] : /okx\.com/.test(h) ? ['okx', 'Крипта: биржа OKX'] : /script\.google\.com/.test(h) ? ['sheet', 'Облако: Google Таблица'] : /unpkg/.test(h) ? ['lib', 'Библиотека графиков'] : /bonds\.json/.test(p) ? ['bonds', 'База облигаций'] : /\/(data|config)\//.test(p) ? ['cfg', 'Справочники и настройки'] : h === location.host ? ['app', 'Файлы приложения'] : ['other', 'Прочие данные'];
+    const k = h === 'iss.moex.com' ? ['moex', 'Котировки Мосбиржи'] : /cbr-xml-daily/.test(h) ? ['cbr', 'Курсы ЦБ РФ'] : /frankfurter/.test(h) ? ['ecb', 'Мировые валютные пары (ЕЦБ)'] : /okx\.com/.test(h) ? ['okx', 'Крипта: биржа OKX'] : /script\.google\.com/.test(h) ? ['sheet', 'Облако: Google Таблица'] : /unpkg/.test(h) ? ['lib', 'Библиотека графиков'] : /bonds\.json/.test(p) ? ['bonds', 'База облигаций'] : /\/(data|config)\//.test(p) ? ['cfg', 'Справочники и настройки'] : h === location.host ? ['app', 'Файлы приложения'] : /coingecko/.test(h) ? ['cg', 'Крипто: фундамент (CoinGecko)'] : ['other', 'Прочие данные'];
     return { k: k[0], n: k[1], via };
   } catch { return { k: 'other', n: 'Прочие данные', via: false }; }
 }
@@ -115,9 +115,9 @@ new MutationObserver(bootSetting).observe(document.body, { childList: true, subt
 
 setTimeout(() => { imp('./login.js').then(() => imp('./sheetsync.js')); }, 0);
 setTimeout(() => { imp('./account.js'); }, 250);
-setTimeout(() => { imp('./draw.js').then(() => imp('./alerts.js')).then(() => imp('./patterns.js')).then(() => imp('./shlayout.js')).then(() => imp('./candles.js')); imp('./scansearch.js'); }, 300);
+setTimeout(() => { imp('./draw.js').then(() => imp('./alerts.js')).then(() => imp('./patterns.js')).then(() => imp('./shlayout.js')).then(() => imp('./candles.js')).then(() => imp('./analysis.js')).then(() => imp('./entry.js')); imp('./scansearch.js'); }, 300);
 setTimeout(() => { imp('./refresh.js'); }, 500);
 setTimeout(() => { imp('./fxdetail.js'); }, 1000);
 setTimeout(() => { imp('./plan.js'); imp('./sectors.js'); imp('./funds.js'); imp('./assetinfo.js'); }, 1300);
 setTimeout(() => { imp('./fxworld.js'); }, 1400);
-setTimeout(() => { imp('./jview.js'); imp('./fixes.js'); imp('./dataset.js'); }, 1600);
+setTimeout(() => { imp('./jview.js'); imp('./fixes.js'); imp('./dataset.js'); imp('./trainer.js'); }, 1600);
