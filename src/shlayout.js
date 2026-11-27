@@ -1,5 +1,31 @@
 const $ = (id) => document.getElementById(id);
 
+const net = (window.__igNet = window.__igNet || { pend: new Map(), last: {}, seq: 0 });
+if (!net.wrapped) {
+  net.wrapped = true;
+  const label = (u) => {
+    try {
+      const x = new URL(u, location.href), h = x.host, all = decodeURIComponent(x.href);
+      const via = /corsproxy|allorigins|codetabs|thingproxy/.test(h) ? ' через прокси' : '';
+      if (/iss\.moex\.com/.test(h) || (via && /iss\.moex\.com/.test(all))) return 'Котировки Мосбиржи' + via;
+      if (/okx\.com/.test(h)) return 'Биржа OKX';
+      if (/coingecko/.test(h)) return 'CoinGecko (фундамент)';
+      if (/unpkg/.test(h)) return 'Библиотека графиков';
+      if (/script\.google\.com/.test(h)) return 'Google Таблица';
+      if (/cbr-xml-daily/.test(h)) return 'Курсы ЦБ РФ';
+      if (/frankfurter/.test(h)) return 'Курсы валют ЕЦБ';
+      if (h === location.host) return 'Файлы приложения';
+      return h + via;
+    } catch { return 'Данные'; }
+  };
+  const of = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    const u = typeof input === 'string' ? input : (input && input.url) || String(input), id = ++net.seq, l = label(u), t0 = Date.now();
+    net.pend.set(id, { l, t0 });
+    return of(input, init).then((r) => { net.pend.delete(id); net.last[l] = { ok: r.ok, status: r.status, ms: Date.now() - t0 }; return r; }, (e) => { net.pend.delete(id); net.last[l] = { ok: false, err: (e && e.message) || 'нет связи', ms: Date.now() - t0 }; throw e; });
+  };
+}
+
 let lockY = 0, locked = false;
 function lockSync() {
   const open = !!document.querySelector('.sheet:not([hidden])');

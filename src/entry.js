@@ -2,24 +2,81 @@ import { riskPlan } from './engine/risk.js';
 import { getAnalysis, HZ } from './analysis.js';
 import { PRE, run, levelName } from './engine/advice.js';
 import { chartData, assetKey } from './draw.js';
+import * as journal from './journal.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const f1 = (x, d = 2) => (Number.isFinite(x) ? Number(x).toFixed(d).replace('.', ',') : '—');
 const fx = (x) => (Number.isFinite(x) ? (Math.abs(x) >= 100 ? x.toFixed(2) : Math.abs(x) >= 1 ? x.toFixed(3) : x.toPrecision(4)) : '—');
-let fees = null, pass = false;
-fetch('config/fees.json').then((r) => r.json()).then((f) => { fees = f; }).catch(() => {});
+let fees = null, feesErr = '', pass = false;
+
+async function loadFees() {
+  if (fees) return fees;
+  try { const r = await fetch('config/fees.json', { cache: 'no-store' }); if (!r.ok) throw new Error('ответ ' + r.status); fees = await r.json(); feesErr = ''; } catch (e) { feesErr = (e && e.message) || 'нет связи'; }
+  return fees;
+}
+loadFees();
 
 const css = document.createElement('style');
-css.textContent = '#enMod{z-index:120}#enMod .panel{max-width:620px}#enCalc{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0}#enAdv{list-style:none;margin:6px 0;padding:0}#enAdv li{padding:6px 10px;margin:4px 0;border-radius:12px;background:var(--kpi);border-left:4px solid var(--l4);font-size:13px}#enAdv li.bad{border-left-color:var(--bad)}#enAdv li.warn{border-left-color:var(--warn)}#enAdv li.good{border-left-color:var(--ok)}#enAdv b{display:block}#enMod textarea{min-height:64px}';
+css.textContent = '#enMod,#enWait{z-index:120}#enMod .panel,#enWait .panel{max-width:620px}#enCalc{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:8px 0}#enAdv,#enwL,#enwN{list-style:none;margin:6px 0;padding:0}#enAdv li,#enwL li{padding:7px 10px;margin:4px 0;border-radius:12px;background:var(--kpi);border-left:4px solid var(--l4);font-size:13px}#enAdv li.bad,#enwL li.bad{border-left-color:var(--bad)}#enAdv li.warn,#enwL li.warn{border-left-color:var(--warn)}#enAdv li.good,#enwL li.good{border-left-color:var(--ok)}#enAdv b,#enwL b{display:block}#enMod textarea{min-height:64px}#enwNet{font-size:12px;color:var(--mut);margin:6px 0}';
 document.head.appendChild(css);
 
 function latest() { try { return JSON.parse(localStorage.getItem('ig_journal')) || []; } catch { return []; } }
 
-function open() {
+function snap() {
   const k = assetKey(), an = getAnalysis(), data = chartData();
-  if (!k || !data.length || !fees) { alert('Данные ещё загружаются, подождите секунду и повторите.'); return; }
-  const crypto = k.market === 'crypto', px = data[data.length - 1].c;
+  const px = data.length ? data[data.length - 1].c : (an && an.px) || 0;
+  return { k, an, data, px };
+}
+
+function netLines() {
+  const n = window.__igNet; if (!n) return [];
+  const now = Date.now(), out = [];
+  for (const v of n.pend.values()) out.push(`⏳ ${v.l}: ждём ${Math.round((now - v.t0) / 1000)} с`);
+  for (const [l, v] of Object.entries(n.last)) if (!v.ok) out.push(`⚠ ${l}: ${v.err || 'ответ ' + v.status}`);
+  return out.slice(0, 8);
+}
+
+function waitDialog() {
+  if ($('enWait')) return;
+  const m = document.createElement('div');
+  m.className = 'sheet'; m.id = 'enWait';
+  m.innerHTML = '<div class="panel"><div class="sh-head"><h2>Готовлю данные для записи</h2><button class="mini" id="enwX">Закрыть</button></div><p class="hint">Для записи нужны актив, цена и тарифы. Комплексный анализ подтянется сам. Ниже видно, чего ещё не хватает и какой запрос сейчас идёт.</p><ul id="enwL"></ul><div id="enwNet"></div><div id="enwM" hidden><p class="hint">Источник долго не отвечает. Можно записать сделку по цене, которую вы введёте сами (например, цена в вашем брокерском приложении).</p><label>Цена входа<input id="enwP" type="number" step="any" inputmode="decimal"></label><button class="btn" id="enwGo">Продолжить с этой ценой</button></div></div>';
+  document.body.appendChild(m);
+  const t0 = Date.now();
+  const close = () => { clearInterval(tm); m.remove(); };
+  const tick = () => {
+    const s = snap(), ready = s.k && fees && s.px > 0;
+    if (ready) { close(); openForm(s.px, false); return; }
+    const li = (c, t, x) => `<li class="${c}"><b>${t}</b>${esc(x)}</li>`;
+    const pend = window.__igNet ? window.__igNet.pend.size : 0;
+    $('enwL').innerHTML = [
+      s.k ? li('good', 'Актив определён', s.k.name + ' (' + s.k.id + ')') : li('bad', 'Актив не определён', 'Закройте окно актива и откройте его заново.'),
+      s.data.length ? li('good', 'График загружен', `${s.data.length} свечей, последняя цена ${fx(s.px)}`) : s.px > 0 ? li('warn', 'График ещё без свечей', 'Цена взята из анализа: ' + fx(s.px)) : li('warn', 'Свечи графика ещё не пришли', pend ? 'Идёт загрузка с биржи, ждём ответ.' : 'Запросов нет: обновите окно актива.'),
+      fees ? li('good', 'Тарифы загружены', 'config/fees.json') : feesErr ? li('bad', 'Тарифы не загрузились', 'config/fees.json: ' + feesErr + '. Нажмите «Полное обновление» в настройках.') : li('warn', 'Загружаю тарифы', 'config/fees.json'),
+      s.an ? li('good', 'Комплексный анализ готов', 'счёт ' + f1(s.an.total, 0)) : li(pend ? 'warn' : 'info', 'Комплексный анализ', pend ? 'считается: загружаются свечи и фундаментальные данные.' : 'пока недоступен, запись возможна без него.'),
+    ].join('');
+    const nl = netLines();
+    $('enwNet').innerHTML = nl.length ? '<b>Сеть сейчас</b><br>' + nl.map(esc).join('<br>') : '';
+    if (Date.now() - t0 > (window.__igWaitMs || 12000) && s.k && fees) $('enwM').hidden = false;
+  };
+  const tm = setInterval(tick, 400);
+  $('enwX').onclick = close;
+  m.addEventListener('click', (e) => { if (e.target === m) close(); });
+  $('enwGo').onclick = () => { const p = parseFloat($('enwP').value); if (!(p > 0)) { $('enwP').focus(); return; } close(); openForm(p, true); };
+  tick();
+}
+
+async function openEntry() {
+  await loadFees();
+  const s = snap();
+  if (s.k && fees && s.px > 0) openForm(s.px, false); else waitDialog();
+}
+
+function openForm(px, manual) {
+  const k = assetKey(), an = getAnalysis();
+  if (!k || !fees || !(px > 0)) { waitDialog(); return; }
+  const crypto = k.market === 'crypto';
   const sheetDir = (document.querySelector('#shDir .on') || {}).dataset?.d || 'long';
   const hk = an ? an.h : (localStorage.getItem('ig_horizon') || 'mid'), H = HZ[hk];
   const atr = an ? an.plan.atr : px * 0.02;
@@ -29,7 +86,7 @@ function open() {
   const opt = (arr) => arr.map(([v, n]) => `<option value="${v}">${esc(n)}</option>`).join('');
   const exOpts = opt(Object.entries(fees.crypto).map(([v, o]) => [v, o.name || v]));
   m.innerHTML = `<div class="panel"><div class="sh-head"><h2>Параметры сделки</h2><button class="mini" id="enX">Закрыть</button></div>
-  <p class="hint">${esc(k.name)} · ${esc(H.name.toLowerCase())} торговля${an ? ` · анализ: ${an.dir === 'long' ? 'Long' : an.dir === 'short' ? 'Short' : 'ждать'}, счёт ${f1(an.total, 0)}, уверенность ${f1(an.conf, 0)}%` : ' · комплексный анализ ещё не загружен'}. Вход по текущей цене ${fx(px)}.</p>
+  <p class="hint">${esc(k.name)} · ${esc(H.name.toLowerCase())} торговля${an ? ` · анализ: ${an.dir === 'long' ? 'Long' : an.dir === 'short' ? 'Short' : 'ждать'}, счёт ${f1(an.total, 0)}, уверенность ${f1(an.conf, 0)}%` : ' · комплексный анализ не загружен, подсказки ограничены'}. ${manual ? 'Цена входа введена вручную' : 'Вход по текущей цене'} ${fx(px)}.</p>
   <div class="seg" id="enDir"><button data-d="long">Long</button><button data-d="short">Short</button></div>
   ${crypto ? `<label>Биржа<select id="enEx">${exOpts}</select></label><div class="two"><label>Рынок<select id="enInst"><option value="spot">Спот / маржа</option><option value="swap">Своп</option></select></label><label>Заявка<select id="enOrd"><option value="taker">Taker</option><option value="maker">Maker</option></select></label></div><label>Плечо<input id="enLev" type="number" min="1" step="0.5"></label>` : `<label>Брокер и тариф<select id="enBrk">${opt(fees.brokers.map((b) => [b.id, b.name]))}</select></label>`}
   <div class="two"><label>Капитал, ${crypto ? 'USDT' : '₽'}<input id="enEq" type="number"></label><label>Риск на сделку, %<input id="enRisk" type="number" step="0.1"></label></div>
@@ -81,18 +138,25 @@ function open() {
     const dirBtn = document.querySelector(`#shDir [data-d="${rec.dir}"]`); if (dirBtn && !dirBtn.classList.contains('on')) dirBtn.click();
     set('pEq', rec.eq); set('pRisk', rec.risk); set('pHold', rec.hold); if (crypto) { set('pEx', rec.ex); set('pInst', rec.inst); set('pOrd', rec.ord); set('pLev', rec.lev); } else set('pBrk', rec.brk);
     m.remove();
-    pass = true; const btn = $('shEnter'); if (btn) btn.click(); pass = false;
+    const recent = () => latest().reduce((a, b) => (!a || b.id > a.id ? b : a), null);
+    const fresh = (r) => r && r.symbol === k.id && Date.now() - r.id < 8000;
+    pass = true; const btn = $('shEnter'); try { if (btn) btn.click(); } catch { /* handled below */ } pass = false;
     setTimeout(() => {
+      if (!fresh(recent())) {
+        try { journal.add({ market: k.market, symbol: k.id, dir: rec.dir, price: px, stop: rec.stop, tp: rec.tp, qty: plan.qty, mode: 'trend', consensus: null, verdict: 'yellow', lights: { macd: 'yellow', ema: 'yellow', rsi: 'yellow', overall: 'yellow' }, perTf: {}, plan, equity: rec.eq, riskPct: rec.risk, exchange: rec.ex, inst: rec.inst, ord: rec.ord, broker: rec.brk, lev: rec.lev }); journal.render($('jTbl')); } catch { /* journal unavailable */ }
+      }
       const j = latest(), r0 = j.reduce((a, b) => (!a || b.id > a.id ? b : a), null);
-      if (!r0 || r0.symbol !== k.id || Date.now() - r0.id > 8000) return;
-      Object.assign(r0, { dir: rec.dir, price: px, stop: rec.stop, tp: rec.tp, qty: plan.qty, plan, equity: rec.eq, riskPct: rec.risk, lev: rec.lev, holdHours: rec.hold, exchange: rec.ex || r0.exchange, inst: rec.inst || r0.inst, ord: rec.ord || r0.ord, broker: rec.brk || r0.broker, brokerName: crypto ? (fees.crypto[rec.ex] || {}).name : (fees.brokers.find((x) => x.id === rec.brk) || {}).name, horizon: hk, fee, note: rec.note, trainer: true, an: an ? { h: an.h, dir: an.dir, total: an.total, conf: an.conf, T: an.T.score, C: an.C.score, F: an.F.ok ? an.F.score : null, candles: an.C.list.map((p) => p.name), recs: an.recs.slice(0, 8).map((x) => x.t) } : null });
+      if (!fresh(r0)) return;
+      Object.assign(r0, { dir: rec.dir, price: px, stop: rec.stop, tp: rec.tp, qty: plan.qty, plan, equity: rec.eq, riskPct: rec.risk, lev: rec.lev, holdHours: rec.hold, exchange: rec.ex || r0.exchange, inst: rec.inst || r0.inst, ord: rec.ord || r0.ord, broker: rec.brk || r0.broker, brokerName: crypto ? (fees.crypto[rec.ex] || {}).name : (fees.brokers.find((x) => x.id === rec.brk) || {}).name, horizon: hk, fee, note: rec.note, trainer: true, manualPrice: manual || undefined, an: an ? { h: an.h, dir: an.dir, total: an.total, conf: an.conf, T: an.T.score, C: an.C.score, F: an.F.ok ? an.F.score : null, candles: an.C.list.map((p) => p.name), recs: an.recs.slice(0, 8).map((x) => x.t) } : null });
       localStorage.setItem('ig_journal', JSON.stringify(j));
-    }, 40);
+      try { journal.render($('jTbl')); } catch { /* ignore */ }
+      if (btn) btn.textContent = 'Записано в журнал';
+    }, 60);
   };
 }
 
 document.addEventListener('click', (e) => {
   if (!e.target || e.target.id !== 'shEnter' || pass) return;
   e.stopImmediatePropagation(); e.preventDefault();
-  open();
+  openEntry();
 }, true);
