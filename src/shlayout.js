@@ -16,6 +16,7 @@ function lockSync() {
 }
 new MutationObserver(lockSync).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
 lockSync();
+document.addEventListener('scroll', (e) => { const t = e.target; if (t && t.classList && t.classList.contains('sheet') && t.scrollLeft) t.scrollLeft = 0; }, true);
 
 function build() {
   const sh = $('sheet'), ch = $('shChart');
