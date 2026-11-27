@@ -1,8 +1,17 @@
-html{scroll-padding-top:96px}
+html{scroll-padding-top:96px;-webkit-tap-highlight-color:transparent;text-rendering:optimizeLegibility}
+body{font-size:15.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body.lock{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .bar{max-width:1280px;margin-left:auto;margin-right:auto}
+.bar .mini{flex:none;min-width:40px;height:40px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 nav button{padding:9px 12px}
-.panel{overflow-wrap:anywhere}
+.panel{overflow-wrap:anywhere;margin-bottom:24px}
+.sheet{padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .sh-head{position:sticky;top:0;z-index:3;background:var(--sheet);padding:4px 0 8px;margin-top:-4px}
+.hint,small{font-size:13px;line-height:1.45}
+label{font-size:13px}
+table{font-size:13.5px}
+.k small,.tag,.badge,.fine,.legend{font-size:12px}
+.k b,.px,td,.bi .r b,.an-row b,.fwr .r b,.tp .r b{font-variant-numeric:tabular-nums}
 .two>label,.three>label{min-width:0}
 .chk{align-items:flex-start;line-height:1.35}
 .row>.btn.sm{flex:1 1 auto}
@@ -10,12 +19,22 @@ nav button{padding:9px 12px}
 .tp b,.fwr b,.chip b{overflow-wrap:anywhere}
 td,th{padding:8px 9px}
 input[type=search]{-webkit-appearance:none;appearance:none}
-.scroll{max-width:100%}
+main,.card,.panel,.scroll{max-width:100%}
+svg,canvas,table{max-width:100%}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+button,.mini,.btn,.seg button,nav button,summary{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.mini,.seg button,nav button{min-height:40px}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+#shChart{min-height:340px}
+#chart,.bc{min-height:240px}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+#shChart:empty,#fxCards:empty,#bList:empty{background:linear-gradient(90deg,var(--kpi) 25%,var(--field) 50%,var(--kpi) 75%);background-size:200% 100%;animation:shimmer 1.4s linear infinite;border-radius:16px}
+.tab.on>*{animation-duration:.4s}
 .sh-grid{grid-template-columns:1fr}
 #sheet .panel{max-width:1240px}
 .sh-top{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,1fr);gap:16px;align-items:start;margin-bottom:6px}
 .sh-left,.sh-right{min-width:0}
 @media(max-width:900px){.sh-top{grid-template-columns:1fr;gap:0}}
-@media(max-width:520px){.row>.btn.sm{flex:1 1 140px}.card{padding:14px}h3{margin-top:14px}}
+@media(max-width:520px){body{font-size:16px}.row>.btn.sm{flex:1 1 140px}.card{padding:14px}h3{margin-top:14px}}
 @media(max-width:420px){nav button{padding:8px 10px;font-size:13px}.logo{font-size:22px}h2{font-size:18px}.k b{font-size:15px}.bi .r b{font-size:17px}.seg button{padding:7px 11px;font-size:13px}.btn{font-size:14px}}
+@media(prefers-reduced-motion:reduce){#shChart:empty,#fxCards:empty,#bList:empty{animation:none}}

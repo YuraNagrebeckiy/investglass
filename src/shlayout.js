@@ -1,5 +1,22 @@
 const $ = (id) => document.getElementById(id);
 
+let lockY = 0, locked = false;
+function lockSync() {
+  const open = !!document.querySelector('.sheet:not([hidden])');
+  if (open && !locked) {
+    lockY = window.scrollY; locked = true;
+    document.body.style.top = -lockY + 'px';
+    document.body.classList.add('lock');
+  } else if (!open && locked) {
+    locked = false;
+    document.body.classList.remove('lock');
+    document.body.style.top = '';
+    window.scrollTo({ top: lockY, left: 0, behavior: 'instant' });
+  }
+}
+new MutationObserver(lockSync).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['hidden'] });
+lockSync();
+
 function build() {
   const sh = $('sheet'), ch = $('shChart');
   if (!sh || sh.hidden || !ch) return;
