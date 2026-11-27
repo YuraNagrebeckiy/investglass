@@ -12,6 +12,10 @@ td,th{padding:8px 9px}
 input[type=search]{-webkit-appearance:none;appearance:none}
 .scroll{max-width:100%}
 .kpis{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
-@media(max-width:860px){.sh-grid aside{order:2}}
+.sh-grid{grid-template-columns:1fr}
+#sheet .panel{max-width:1240px}
+.sh-top{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(290px,1fr);gap:16px;align-items:start;margin-bottom:6px}
+.sh-left,.sh-right{min-width:0}
+@media(max-width:900px){.sh-top{grid-template-columns:1fr;gap:0}}
 @media(max-width:520px){.row>.btn.sm{flex:1 1 140px}.card{padding:14px}h3{margin-top:14px}}
 @media(max-width:420px){nav button{padding:8px 10px;font-size:13px}.logo{font-size:22px}h2{font-size:18px}.k b{font-size:15px}.bi .r b{font-size:17px}.seg button{padding:7px 11px;font-size:13px}.btn{font-size:14px}}

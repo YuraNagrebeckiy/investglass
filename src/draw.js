@@ -52,9 +52,11 @@ function mount(c) {
   if (c.el.id !== 'shChart') return;
   const k = assetKey();
   if (!k) return;
-  if (cur) { cur.alive = false; if (cur.root) cur.root.remove(); }
+  const prev = cur, same = !!(prev && prev.k && prev.k.id === k.id && prev.k.market === k.market);
+  const tfNow = ((document.querySelector('#shTf .on') || {}).dataset || {}).t || '';
+  if (prev) { prev.alive = false; if (prev.root) prev.root.remove(); }
   document.querySelectorAll('.dtb').forEach((x) => x.remove());
-  const st = { c, k, data: stAll(k), tool: 'cur', tmp: null, drag: null, sel: -1, alive: true, sig: '', band: cur && cur.band };
+  const st = { c, k, data: stAll(k), tool: 'cur', tmp: null, drag: null, sel: same ? prev.sel : -1, alive: true, sig: '', band: prev && prev.band, tf: tfNow };
   cur = st;
   c.el.style.position = 'relative';
   const cv = document.createElement('canvas');
@@ -76,7 +78,8 @@ function mount(c) {
   new ResizeObserver(() => { st.sig = ''; }).observe(c.el);
   bind(st);
   loop(st);
-  document.dispatchEvent(new CustomEvent('ig:chart'));
+  if (same && prev.tool && prev.tool !== 'cur') setTool(st, prev.tool);
+  if (!same || prev.tf !== tfNow) document.dispatchEvent(new CustomEvent('ig:chart'));
   if (!fees) fetch('config/fees.json').then((r) => r.json()).then((f) => { fees = f; st.sig = ''; }).catch(() => {});
   risk(st);
 }
@@ -292,7 +295,7 @@ function paint(st) {
   const ok = css('--ok') || '#3F7052', bad = css('--bad') || '#A94841', info = css('--info') || '#4A6B88', warn = css('--warn') || '#8E6420', txt = css('--txt') || '#333';
   const label = (s, x, y, col) => { const w = g.measureText(s).width + 8; g.fillStyle = col; g.globalAlpha = 0.92; g.fillRect(x, y - 8, w, 16); g.globalAlpha = 1; g.fillStyle = '#fff'; g.fillText(s, x + 4, y + 4); };
   if (st.band) { const x1 = X(st, st.band[0]), x2 = X(st, st.band[1]); if (x1 != null && x2 != null) { g.fillStyle = info; g.globalAlpha = 0.1; g.fillRect(Math.min(x1, x2), 0, Math.abs(x2 - x1), H); g.globalAlpha = 1; label('окно сравнения', Math.min(x1, x2) + 2, 12, info); } }
-  const draw1 = (o, i, tmp) => {
+  const draw1 = (o, i) => {
     const sel = i === st.sel && st.tool === 'edit';
     g.lineWidth = sel ? 3 : 2; g.setLineDash([]);
     if (o.t === 'sup' || o.t === 'res') {
@@ -334,8 +337,17 @@ function paint(st) {
       if (sel) { g.fillStyle = info; for (const [x, y] of [[x1, ye], [x2, ye]]) { g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); } }
     } else if (o.t === 'entry' || o.t === 'exit' || o.t === 'mark') {
       const x = X(st, o.time), y = Y(st, o.p); if (x == null || y == null) return;
-      g.fillStyle = o.t === 'exit' ? bad : o.t === 'entry' ? ok : warn; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill();
-      if (o.note || o.t !== 'mark') g.fillText(o.note || (o.t === 'entry' ? 'Вход' : 'Выход'), x + 8, y + 4);
+      const col = o.t === 'exit' ? bad : o.t === 'entry' ? ok : warn;
+      g.fillStyle = col;
+      if (o.t === 'entry' && o.dir) {
+        const s = o.dir === 'long' ? 1 : -1;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x - 8, y + s * 16); g.lineTo(x + 8, y + s * 16); g.closePath(); g.fill();
+        g.setLineDash([3, 3]); g.strokeStyle = col; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
+        label(o.note || 'Вход', Math.max(2, Math.min(W - 120, x - 40)), y + s * 28, col);
+      } else {
+        g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill();
+        if (o.note || o.t !== 'mark') g.fillText(o.note || (o.t === 'entry' ? 'Вход' : 'Выход'), x + 8, y + 4);
+      }
     }
   };
   st.data.forEach((o, i) => draw1(o, i));
@@ -347,12 +359,23 @@ function paint(st) {
 }
 
 document.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'shEnter') setTimeout(() => {
-    if (!cur || !cur.data.length) return;
+  if (!e.target || e.target.id !== 'shEnter') return;
+  setTimeout(() => {
+    const st = cur;
+    if (!st || !st.c.data.length) return;
     const j = LS('ig_journal', []);
     const rec = j.reduce((a, b) => (!a || b.id > a.id ? b : a), null);
-    if (rec && !rec.drawings) { rec.drawings = cur.data.map((x) => ({ ...x })); localStorage.setItem('ig_journal', JSON.stringify(j)); }
-  }, 120);
+    if (!rec || rec.symbol !== st.k.id) return;
+    if (!rec.drawings && rec.price > 0 && rec.stop > 0 && rec.tp > 0 && Date.now() - rec.id < 15000) {
+      const t = st.c.data[st.c.data.length - 1].t, bars = Math.max(20, Math.round(st.c.data.length / 6)), long = rec.dir !== 'short';
+      st.data = st.data.filter((o) => !o.auto);
+      st.data.push({ t: 'entry', dir: long ? 'long' : 'short', time: t, p: rec.price, note: `Вход ${long ? 'Long' : 'Short'} ${nf(rec.price, rec.price > 100 ? 2 : 5)}`, auto: 1 });
+      st.data.push({ t: 'pos', dir: long ? 'long' : 'short', t0: t, t1: timeOf(st.c, idxOf(st.c, t) + bars), e: rec.price, s: rec.stop, tp: rec.tp, auto: 1 });
+      st.sel = st.data.length - 1;
+      persist(st);
+    }
+    if (!rec.drawings) { rec.drawings = st.data.map((x) => ({ ...x })); localStorage.setItem('ig_journal', JSON.stringify(j)); }
+  }, 150);
 });
 document.addEventListener('input', (e) => { if (cur && e.target && /^p(Eq|Risk|Lev|Brk|Ex|Inst|Ord)$/.test(e.target.id)) { cur.sig = ''; risk(cur); } });
 document.addEventListener('change', (e) => { if (cur && e.target && /^p(Brk|Ex|Inst|Ord)$/.test(e.target.id)) { cur.sig = ''; risk(cur); } });
