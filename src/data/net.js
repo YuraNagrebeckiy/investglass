@@ -16,11 +16,11 @@ async function one(url, ms) {
   return JSON.parse(await r.text());
 }
 
-export async function getJson(url, { timeout = 7000, validate } = {}) {
+export async function getJson(url, { timeout = 7000, validate, proxyMs = 11000 } = {}) {
   const host = new URL(url).host;
   if (net.dead[host] && Date.now() < net.dead[host]) throw new Error('источник ' + host + ' недоступен с вашего подключения');
   const direct = { name: 'напрямую', url, ms: timeout };
-  const px = PROXIES.map((p, i) => ({ name: 'через прокси ' + (i + 1), url: p(url), ms: 11000, i }));
+  const px = PROXIES.map((p, i) => ({ name: 'через прокси ' + (i + 1), url: p(url), ms: proxyMs, i }));
   const order = net.proxyFirst ? [px[net.pi], direct, ...px.filter((p) => p.i !== net.pi)] : [direct, ...px];
   let last = null;
   for (const a of order) {

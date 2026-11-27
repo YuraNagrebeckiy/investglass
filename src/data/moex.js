@@ -5,8 +5,9 @@ const IV = { '10m': 10, '1h': 60, '1d': 24, '1w': 7, '1M': 31 };
 const DAYS = { '10m': 5, '1h': 30, '1d': 420, '1w': 1900, '1M': 3650 };
 
 const table = (js, t) => (js[t] ? js[t].data.map((r) => Object.fromEntries(js[t].columns.map((c, i) => [c, r[i]]))) : []);
-const get = (u) => getJson(u, { validate: (j) => j && typeof j === 'object' });
+const get = (u, o) => getJson(u, { validate: (j) => j && typeof j === 'object', ...o });
 const ts = (s) => Math.floor(Date.parse(s.replace(' ', 'T') + '+03:00') / 1000);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const snaps = {};
 const snapshot = async (name) => {
@@ -55,9 +56,9 @@ export async function funds() {
   return out.filter((x) => x.price > 0).sort((a, b) => b.vol - a.vol);
 }
 
-async function rows(base, id, tf) {
+async function rows(base, id, tf, o) {
   const from = new Date(Date.now() - DAYS[tf] * 864e5).toISOString().slice(0, 10);
-  const js = await get(`${ISS}/engines/${base}/securities/${id}/candles.json?iss.meta=off&interval=${IV[tf]}&from=${from}`);
+  const js = await get(`${ISS}/engines/${base}/securities/${id}/candles.json?iss.meta=off&interval=${IV[tf]}&from=${from}`, o);
   return table(js, 'candles').map((r) => ({ t: ts(r.begin), o: r.open, h: r.high, l: r.low, c: r.close, v: r.volume }));
 }
 
@@ -84,57 +85,93 @@ const FX = {
 };
 
 const CBR = 'https://www.cbr-xml-daily.ru';
-async function cbrSeries() {
-  try {
-    const c = JSON.parse(localStorage.getItem('cbr_fx_v1'));
-    if (c && Date.now() - c.t < 6 * 3600e3) return c;
-  } catch { /* no cache */ }
-  const urls = [`${CBR}/daily_json.js`];
-  const d = new Date();
-  for (let i = 0; i < 160; i++) {
+const ROUTES = [
+  (u) => u,
+  (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+];
+async function tfetch(u, ms) {
+  const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
+  try { return await fetch(u, { signal: c.signal }); } finally { clearTimeout(t); }
+}
+const readCbrCache = () => { try { const c = JSON.parse(localStorage.getItem('cbr_fx_v1')); if (c && Date.now() - c.t < 6 * 3600e3 && c.USD && c.USD.length >= 60) return c; } catch { /* none */ } return null; };
+
+async function cbrLoad() {
+  let route = null, first = null;
+  for (const rt of ROUTES) {
+    try { const r = await tfetch(rt(`${CBR}/daily_json.js`), 4000); if (r.ok) { first = await r.json(); route = rt; break; } } catch { /* next route */ }
+  }
+  if (!route) throw new Error('курсы ЦБ недоступны с вашего подключения');
+  const out = { USD: new Map(), EUR: new Map(), CNY: new Map() };
+  const add = (j) => { const t = Math.floor(Date.parse(j.Date) / 1000); for (const k of Object.keys(out)) { const v = j.Valute && j.Valute[k]; if (v) out[k].set(t, v.Value / v.Nominal); } };
+  add(first);
+  const urls = [], d = new Date();
+  for (let i = 0; i < 230 && urls.length < 160; i++) {
     const x = new Date(d.getTime() - i * 864e5);
     if (x.getUTCDay() === 0 || x.getUTCDay() === 6) continue;
     urls.push(`${CBR}/archive/${x.getUTCFullYear()}/${String(x.getUTCMonth() + 1).padStart(2, '0')}/${String(x.getUTCDate()).padStart(2, '0')}/daily_json.js`);
   }
-  const out = { USD: new Map(), EUR: new Map(), CNY: new Map() };
-  let i = 0;
-  const worker = async () => {
-    while (i < urls.length) {
-      const u = urls[i++];
-      try {
-        const r = await fetch(u); if (!r.ok) continue;
-        const j = await r.json(), t = Math.floor(Date.parse(j.Date) / 1000);
-        for (const k of Object.keys(out)) { const v = j.Valute && j.Valute[k]; if (v) out[k].set(t, v.Value / v.Nominal); }
-      } catch { /* skip day */ }
-    }
-  };
-  await Promise.all(Array.from({ length: 8 }, worker));
-  const res = { t: Date.now() };
-  for (const k of Object.keys(out)) res[k] = [...out[k].entries()].sort((a, b) => a[0] - b[0]);
-  if (res.USD.length < 30) throw new Error('курсы ЦБ недоступны');
-  try { localStorage.setItem('cbr_fx_v1', JSON.stringify(res)); } catch { /* quota */ }
-  return res;
+  const snap = () => { const res = { t: Date.now() }; for (const k of Object.keys(out)) res[k] = [...out[k].entries()].sort((a, b) => a[0] - b[0]); return res; };
+  return new Promise((resolve, reject) => {
+    let i = 0, resolved = false;
+    const early = () => { if (!resolved && out.USD.size >= 70) { resolved = true; resolve(snap()); } };
+    const worker = async () => {
+      while (i < urls.length) {
+        const u = urls[i++];
+        try { const r = await tfetch(route(u), 4500); if (r.ok) add(await r.json()); } catch { /* skip day */ }
+        early();
+      }
+    };
+    Promise.all(Array.from({ length: route === ROUTES[0] ? 12 : 5 }, worker)).then(() => {
+      const res = snap();
+      if (res.USD.length >= 60) { try { localStorage.setItem('cbr_fx_v1', JSON.stringify(res)); } catch { /* quota */ } }
+      if (!resolved) { resolved = true; if (res.USD.length >= 60) resolve(res); else reject(new Error('курсы ЦБ недоступны')); }
+    });
+  });
+}
+let cbrP = null;
+function cbrSeries() {
+  const c = readCbrCache();
+  if (c) return Promise.resolve(c);
+  if (!cbrP) cbrP = cbrLoad().finally(() => setTimeout(() => { cbrP = null; }, 20000));
+  return cbrP;
 }
 
+const fxCache = {};
 export async function fx(code, tf = '1d') {
-  let err = null;
-  for (const [id, base] of FX[code]) {
-    try {
-      const c = await rows(base, id, tf);
-      if (c.length > 30) return { candles: c, source: id + (net.via !== 'напрямую' ? ', ' + net.via : '') };
-    } catch (e) { err = e; }
-  }
-  const sn = tf === '1d' ? await snapshot('fx') : null;
+  const day = tf === '1d', hit = fxCache[code];
+  if (day && hit && Date.now() - hit.t < 45000) return hit.r;
+  const moexP = (async () => {
+    let err = null;
+    for (const [id, base] of FX[code]) {
+      try {
+        const c = await rows(base, id, tf, day ? { timeout: 4500, proxyMs: 6000 } : undefined);
+        if (c.length > 30) { const r = { candles: c, source: id + (net.via !== 'напрямую' ? ', ' + net.via : '') }; if (day) fxCache[code] = { t: Date.now(), r }; return r; }
+      } catch (e) { err = e; }
+    }
+    throw err || new Error('нет данных ' + code);
+  })();
+  if (!day) return moexP;
+  moexP.catch(() => {});
+  const settle = moexP.then((r) => ({ r }), (e) => ({ e }));
+  const first = await Promise.race([settle, sleep(3000).then(() => ({ late: true }))]);
+  if (first.r) return first.r;
+  const sn = await snapshot('fx');
   if (sn && sn[code] && sn[code].candles.length > 30) {
     usedSnapshot.on = true;
     return { candles: unpack(sn[code].candles), source: sn[code].source + ', снимок от ' + new Date(sn.updated).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) };
   }
-  if (tf === '1d') {
-    try {
-      const s = await cbrSeries();
-      const a = s[code];
-      if (a && a.length > 30) { usedSnapshot.on = true; return { candles: a.map(([t, v]) => ({ t, o: v, h: v, l: v, c: v, v: 0 })), source: 'официальный курс ЦБ РФ, только закрытие за ' + a.length + ' дн. (Мосбиржа недоступна с вашего подключения)' }; }
-    } catch (e) { err = err || e; }
+  let cbrErr = null;
+  try {
+    const s = await cbrSeries(), a = s[code];
+    if (a && a.length > 60) { usedSnapshot.on = true; return { candles: a.map(([t, v]) => ({ t, o: v, h: v, l: v, c: v, v: 0 })), source: 'официальный курс ЦБ РФ, только закрытие за ' + a.length + ' дн. (Мосбиржа не ответила)' }; }
+  } catch (e) { cbrErr = e; }
+  const cm = `ЦБ: ${cbrErr ? cbrErr.message : 'мало данных'}`;
+  if (first.late) {
+    const w = await Promise.race([settle, sleep(10000).then(() => ({ e: new Error('не ответила за 10 с дополнительно') }))]);
+    if (w.r) return w.r;
+    throw new Error(`Мосбиржа: ${w.e.message}. ${cm}`);
   }
-  throw err || new Error('нет данных ' + code);
+  throw new Error(`Мосбиржа: ${first.e ? first.e.message : 'нет данных'}. ${cm}`);
 }
