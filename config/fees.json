@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-27",
+ "updated": "2026-11-28",
  "note": "Ставки брокеров собраны с сайтов брокеров и обзоров. Перед сделкой сверяйте со своим тарифом: verify=true значит, что цифра не подтверждена вашим договором.",
  "brokers": [
   {
@@ -195,7 +195,7 @@
     "source": "типовая ставка Regular; точное значение даёт приватный API /account/trade-fee"
    },
    "borrowDailyUSDT": 0.000096,
-   "fundingRate8h": 0.0000519920449606,
+   "fundingRate8h": 0.0000498805452696,
    "ratesSource": "okx.com/api/v5/public/interest-rate-loan-quota, funding-rate"
   },
   "binance": {

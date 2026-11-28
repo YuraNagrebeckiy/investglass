@@ -1,11 +1,12 @@
 {
- "updated": "2026-11-27T23:33:55.275Z",
+ "updated": "2026-11-28T07:11:07.676Z",
  "log": [
   "ok okx",
   "ok cbr-key-rate",
   "FAIL moex-bonds: fetch failed",
   "ok moex-enrich",
   "FAIL moex-fx: no fx series",
+  "ok cbr-fx",
   "FAIL moex-stocks: fetch failed"
  ],
  "stats": {
@@ -13,6 +14,11 @@
    "targets": 1200,
    "description": 0,
    "amortization": 0
-  }
+  },
+  "fxCbr": [
+   "USD",
+   "EUR",
+   "CNY"
+  ]
  }
 }
