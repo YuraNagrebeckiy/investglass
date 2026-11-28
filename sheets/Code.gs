@@ -3,6 +3,7 @@
 // Подробная инструкция: sheets/README.md
 var MAX_PART = 40000;
 var FX_CODES = ['USD', 'EUR', 'CNY'];
+var FX_SHEET = 'Курсы';
 
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
@@ -32,21 +33,49 @@ function hex_(s) {
     .map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
 }
 
-// ---------- Общие курсы валют (лист Public) ----------
-// Раз в сутки данные обновляет триггер dailyFx (см. installDaily). Если данные старше 20 часов,
-// их обновит любой запрос приложения pubrefresh. Приложение читает лист, когда интернет-источники недоступны.
+// ---------- Курсы валют: обычная таблица на листе «Курсы» в этой же Google Таблице ----------
+// Строка = день. Для каждой валюты пять граф: откр, макс, мин, закр, объём. В строке 2 справа указаны источники и время обновления.
+// Раз в сутки данные обновляет триггер dailyFx (см. installDaily). Если данные старше 20 часов, их обновит любой запрос приложения.
+// Приложение читает этот лист, когда интернет-источники недоступны. Вручную править лист можно: цены берутся из граф «закр».
+
+function fxHead_() {
+  var h = ['Дата'];
+  FX_CODES.forEach(function (c) { h.push(c + ' откр', c + ' макс', c + ' мин', c + ' закр', c + ' объём'); });
+  FX_CODES.forEach(function (c) { h.push('Источник ' + c); });
+  h.push('Обновлено');
+  return h;
+}
+
+function fxSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), s = ss.getSheetByName(FX_SHEET);
+  if (!s) {
+    s = ss.insertSheet(FX_SHEET);
+    var h = fxHead_();
+    s.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
+    s.setFrozenRows(1);
+    s.getRange('A:A').setNumberFormat('@');
+  }
+  return s;
+}
+
+function num_(x) { var v = typeof x === 'number' ? x : parseFloat(String(x).replace(',', '.')); return isFinite(v) ? v : null; }
 
 function pubRead_() {
-  var S = sheet_('Public', ['key', 'updated', 'part', 'value']), rows = S.getDataRange().getValues(), parts = {}, upd = '', i;
-  for (i = 1; i < rows.length; i++) {
-    var k = String(rows[i][0]);
-    if (k.indexOf('fx:') !== 0) continue;
-    (parts[k] = parts[k] || []).push([Number(rows[i][2]), String(rows[i][3])]);
-    if (String(rows[i][1]) > upd) upd = String(rows[i][1]);
-  }
-  var data = {};
-  Object.keys(parts).forEach(function (k) {
-    try { data[k.slice(3)] = JSON.parse(parts[k].sort(function (a, b) { return a[0] - b[0]; }).map(function (p) { return p[1]; }).join('')); } catch (e) { /* битая запись */ }
+  var S = fxSheet_(), rows = S.getDataRange().getValues(), meta = rows[1] || [], upd = String(meta[19] || ''), data = {};
+  FX_CODES.forEach(function (code, ci) {
+    var base = 1 + ci * 5, out = [], i;
+    for (i = 1; i < rows.length; i++) {
+      var c = num_(rows[i][base + 3]);
+      if (c === null || rows[i][base + 3] === '') continue;
+      var d = rows[i][0];
+      if (d instanceof Date) d = Utilities.formatDate(d, 'Europe/Moscow', 'yyyy-MM-dd');
+      var t = Math.floor(Date.parse(String(d) + 'T00:00:00+03:00') / 1000);
+      if (!t) continue;
+      var o = num_(rows[i][base]), h = num_(rows[i][base + 1]), l = num_(rows[i][base + 2]), v = num_(rows[i][base + 4]);
+      out.push([t, o === null ? c : o, h === null ? c : h, l === null ? c : l, c, v === null ? 0 : v]);
+    }
+    out.sort(function (a, b) { return a[0] - b[0]; });
+    if (out.length) data[code] = { source: String(meta[16 + ci] || ''), updated: upd, candles: out };
   });
   return { ok: true, updated: upd, data: data };
 }
@@ -60,19 +89,31 @@ function pubGet_() {
 }
 
 function pubWrite_(res) {
-  var S = sheet_('Public', ['key', 'updated', 'part', 'value']), all = S.getDataRange().getValues(), keep = [], i, now = new Date().toISOString();
-  for (i = 1; i < all.length; i++) {
-    var k = String(all[i][0]);
-    if (k.indexOf('fx:') === 0 && res[k.slice(3)]) continue;
-    keep.push([k, String(all[i][1]), String(all[i][2]), String(all[i][3])]);
-  }
-  Object.keys(res).forEach(function (code) {
-    var v = JSON.stringify({ source: res[code].source, updated: now, candles: res[code].candles }), p = 0;
-    do { keep.push(['fx:' + code, now, String(p), v.substr(p * MAX_PART, MAX_PART)]); p++; } while (p * MAX_PART < v.length);
+  var S = fxSheet_(), cur = pubRead_().data, byDate = {}, src = {}, W = fxHead_().length;
+  FX_CODES.forEach(function (code, ci) {
+    var use = res[code] || cur[code];
+    if (!use) return;
+    src[ci] = use.source;
+    use.candles.forEach(function (k) {
+      var d = new Date((k[0] + 10800) * 1000).toISOString().slice(0, 10);
+      (byDate[d] = byDate[d] || {})[ci] = k;
+    });
   });
-  S.clearContents();
-  S.getRange(1, 1, 1, 4).setValues([['key', 'updated', 'part', 'value']]);
-  var r = S.getRange(2, 1, keep.length, 4); r.setNumberFormat('@'); r.setValues(keep);
+  var dates = Object.keys(byDate).sort(), n = dates.length, now = new Date().toISOString();
+  var vals = dates.map(function (d, r) {
+    var row = [d];
+    FX_CODES.forEach(function (code, ci) { var k = byDate[d][ci]; if (k) row.push(k[1], k[2], k[3], k[4], k[5]); else row.push('', '', '', '', ''); });
+    FX_CODES.forEach(function (code, ci) { row.push(r === 0 ? (src[ci] || '') : ''); });
+    row.push(r === 0 ? now : '');
+    return row;
+  });
+  S.getRange(2, 1, Math.max(S.getMaxRows() - 1, 1), W).clearContent();
+  if (n) {
+    S.getRange(2, 1, n, 1).setNumberFormat('@');
+    S.getRange(2, 2, n, 15).setNumberFormat('0.0000');
+    [6, 11, 16].forEach(function (col) { S.getRange(2, col, n, 1).setNumberFormat('0'); });
+    S.getRange(2, 1, n, W).setValues(vals);
+  }
 }
 
 var CBR_ID = { USD: 'R01235', EUR: 'R01239', CNY: 'R01375' };
