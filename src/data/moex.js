@@ -1,5 +1,5 @@
 import { getJson, net } from './net.js';
-import { sheetFx } from './cloudfx.js';
+import { sheetFx, sheetStocks } from './cloudfx.js';
 
 const ISS = 'https://iss.moex.com/iss';
 const IV = { '10m': 10, '1h': 60, '1d': 24, '1w': 7, '1M': 31 };
@@ -16,10 +16,21 @@ const snapshot = async (name) => {
   return snaps[name];
 };
 const unpack = (a) => a.map((r) => ({ t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] }));
-export const usedSnapshot = { on: false };
+export const usedSnapshot = { on: false, sheet: false };
 export { net };
 
-export async function stocks(levels = [1, 2]) {
+// Недельные свечи из дневных (неделя с понедельника по московскому времени).
+export function weekly(d) {
+  const out = [];
+  let key = null, cur = null;
+  for (const r of d) {
+    const k = Math.floor((Math.floor((r[0] + 10800) / 86400) + 3) / 7);
+    if (k !== key) { cur = [r[0], r[1], r[2], r[3], r[4], r[5]]; out.push(cur); key = k; } else { cur[2] = Math.max(cur[2], r[2]); cur[3] = Math.min(cur[3], r[3]); cur[4] = r[4]; cur[5] += r[5]; }
+  }
+  return out;
+}
+
+export async function stocks(levels = [1, 2], opt = {}) {
   try {
     const js = await get(`${ISS}/engines/stock/markets/shares/boards/TQBR/securities.json?iss.meta=off&iss.only=securities,marketdata`);
     const md = Object.fromEntries(table(js, 'marketdata').map((x) => [x.SECID, x]));
@@ -27,10 +38,17 @@ export async function stocks(levels = [1, 2]) {
       .map((s) => { const m = md[s.SECID] || {}; return { id: s.SECID, name: s.SHORTNAME || s.SECID, board: 'TQBR', level: s.LISTLEVEL, price: m.LAST || s.PREVPRICE, vol: m.VALTODAY || 0, chg24: m.LASTCHANGEPRC ?? 0 }; })
       .sort((a, b) => b.vol - a.vol);
     if (out.length) return out;
-  } catch { /* snapshot below */ }
+  } catch { /* fallbacks below */ }
+  if (opt.live) throw new Error('Мосбиржа недоступна с этого устройства');
   const sn = await snapshot('stocks');
   if (sn && sn.list && sn.list.length) { usedSnapshot.on = true; return sn.list.filter((s) => s.level == null || levels.includes(s.level)); }
-  throw new Error('Мосбиржа недоступна с вашего подключения, а сохранённой копии нет. Попробуйте другой интернет (Wi-Fi или мобильный) или VPN.');
+  let shErr = null;
+  try {
+    const sh = await sheetStocks();
+    usedSnapshot.on = true; usedSnapshot.sheet = true; usedSnapshot.updated = sh.updated;
+    return sh.list.filter((s) => s.level == null || levels.includes(s.level));
+  } catch (e) { shErr = e; }
+  throw new Error('Мосбиржа недоступна с вашего подключения, а сохранённой копии нет. Копия в Google Таблице: ' + (shErr ? shErr.message : 'пуста') + '. Попробуйте другой интернет (Wi-Fi или мобильный) или VPN.');
 }
 
 export async function funds() {
@@ -63,16 +81,23 @@ async function rows(base, id, tf, o) {
   return table(js, 'candles').map((r) => ({ t: ts(r.begin), o: r.open, h: r.high, l: r.low, c: r.close, v: r.volume }));
 }
 
-export async function candles(id, tf, kind = 'shares/boards/TQBR') {
+export async function candles(id, tf, kind = 'shares/boards/TQBR', opt = {}) {
   const base = kind === 'index' ? 'index/boards/SNDX' : kind;
   try {
     return await rows('stock/markets/' + base, id, tf);
   } catch (e) {
+    if (opt.live) throw e;
     if (tf === '1d') {
       const sn = await snapshot('stocks');
       const a = sn && sn.candles && sn.candles[id];
       if (a && a.length) { usedSnapshot.on = true; return unpack(a); }
     }
+    try {
+      const sh = await sheetStocks();
+      let a = sh.candles[id + '|' + tf];
+      if (!a && tf === '1w') { const d = sh.candles[id + '|1d']; if (d) a = weekly(d); }
+      if (a && a.length) { usedSnapshot.on = true; usedSnapshot.sheet = true; usedSnapshot.updated = sh.updated; return unpack(a); }
+    } catch { /* no sheet copy */ }
     throw e;
   }
 }
@@ -88,7 +113,6 @@ const FX = {
 const CBR = 'https://www.cbr-xml-daily.ru';
 const ROUTES = [
   (u) => u,
-  (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
 ];

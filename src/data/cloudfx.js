@@ -1,5 +1,5 @@
 const unpack = (a) => a.map((r) => ({ t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] }));
-let cfgP = null, pubP = null, pubT = 0;
+let cfgP = null, pubP = null, pubT = 0, stP = null, stT = 0;
 const cfg = () => (cfgP ||= fetch('config/sheets.json', { cache: 'no-store' }).then((r) => r.json()).then((c) => (c && c.url ? c : null)).catch(() => null));
 
 async function tf(url, o, ms) {
@@ -39,4 +39,31 @@ export async function sheetFx(code) {
   if (!x || !x.candles || x.candles.length < 60) throw new Error('в таблице пока нет курсов ' + code);
   const when = new Date(x.updated || j.updated).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
   return { candles: unpack(x.candles), source: `Google Таблица (${x.source}), данные от ${when}` };
+}
+
+// Копия акций MOEX в таблице: список и свечи ('SBER|1d', 'SBER|1h', 'IMOEX|1d').
+export function sheetStocks() {
+  if (stP && Date.now() - stT < 120000) return stP;
+  stT = Date.now();
+  stP = (async () => {
+    const c = await cfg();
+    if (!c) throw new Error('Google Таблица не подключена');
+    const r = await tf(`${c.url}?a=pub&k=stocks`, { redirect: 'follow' }, 20000);
+    let j;
+    try { j = await r.json(); } catch { throw new Error('таблица отвечает старой версией скрипта'); }
+    if (!j || !j.ok || !j.list || j.list.length < 5) throw new Error('в таблице пока нет копии акций: её отправит устройство, где открывается Мосбиржа');
+    return j;
+  })();
+  stP.catch(() => { stP = null; });
+  return stP;
+}
+
+export async function putStocks(body) {
+  const c = await cfg();
+  if (!c) throw new Error('Google Таблица не подключена');
+  const r = await tf(c.url, { method: 'POST', body: JSON.stringify({ a: 'stocksput', ...body }), redirect: 'follow' }, 90000);
+  const j = await r.json();
+  if (!j.ok) throw new Error({ auth: 'неверное имя или пароль облака', sanity: 'цены не прошли проверку', bad: 'неверные данные' }[j.err] || j.err || 'ошибка таблицы');
+  stP = null;
+  return j;
 }
