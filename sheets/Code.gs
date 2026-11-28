@@ -1,15 +1,19 @@
-// InvestGlass: хранение данных пользователей и общих курсов валют в Google Таблице.
+// InvestGlass: хранение данных пользователей, курсов валют и копии акций в Google Таблице.
 // Вставьте этот код в Расширения -> Apps Script (в самой таблице) и опубликуйте как веб-приложение.
 // Подробная инструкция: sheets/README.md
 var MAX_PART = 40000;
 var FX_CODES = ['USD', 'EUR', 'CNY'];
 var FX_SHEET = 'Курсы';
+var ST_SHEET = 'Акции';
+var ST_LIST = 'Акции список';
+var ST_HEAD = ['Тикер', 'ТФ', 'Время unix', 'Дата и время', 'Откр', 'Макс', 'Мин', 'Закр', 'Объём'];
+var STL_HEAD = ['Тикер', 'Название', 'Уровень', 'Цена', 'Оборот', 'Изм. за день %', 'Обновлено'];
 
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
-  if (p.a === 'pub') return json_(pubGet_());
+  if (p.a === 'pub') return json_(p.k === 'stocks' ? stocksRead_() : pubGet_());
   return ContentService.createTextOutput('InvestGlass sync работает');
 }
 
@@ -17,7 +21,7 @@ function doPost(e) {
   var out;
   try {
     var q = JSON.parse(e.postData.contents);
-    out = q.a === 'pubrefresh' ? refreshFx_(false) : handle(q);
+    out = q.a === 'pubrefresh' ? refreshFx_(false) : q.a === 'stocksput' ? stocksPut_(q) : handle(q);
   } catch (err) { out = { ok: false, err: 'server: ' + err }; }
   return json_(out);
 }
@@ -28,9 +32,88 @@ function sheet_(name, head) {
   return s;
 }
 
+function plainSheet_(name, head) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet(), s = ss.getSheetByName(name);
+  if (!s) {
+    s = ss.insertSheet(name);
+    s.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+    s.setFrozenRows(1);
+  }
+  return s;
+}
+
 function hex_(s) {
   return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, s)
     .map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
+}
+
+// Проверка имени и ключа пользователя (как при сохранении данных). Пять неверных попыток блокируют имя на 10 минут.
+function authUser_(q) {
+  var n = String(q.n || '').trim().toLowerCase();
+  if (n.length < 2 || n.length > 24 || !q.t) return false;
+  var cache = CacheService.getScriptCache(), ck = 'fail:' + n, fails = Number(cache.get(ck)) || 0;
+  if (fails >= 5) return false;
+  var users = sheet_('Users', ['name', 'hash', 'created', 'version']).getDataRange().getValues(), th = hex_(String(q.t)), i;
+  for (i = 1; i < users.length; i++) {
+    if (String(users[i][0]) === n) {
+      if (String(users[i][1]) === th) { cache.remove(ck); return true; }
+      cache.put(ck, String(fails + 1), 600);
+      return false;
+    }
+  }
+  return false;
+}
+
+// ---------- Копия акций MOEX: её присылает устройство, у которого Мосбиржа открывается ----------
+// Листы «Акции список» (тикер, название, цена) и «Акции» (свечи: дневные для всех, часовые для самых торгуемых).
+
+function stocksRead_() {
+  var L = plainSheet_(ST_LIST, STL_HEAD), S = plainSheet_(ST_SHEET, ST_HEAD);
+  var lv = L.getDataRange().getValues(), sv = S.getDataRange().getValues(), list = [], candles = {}, upd = '', i;
+  for (i = 1; i < lv.length; i++) {
+    if (!lv[i][0]) continue;
+    list.push({ id: String(lv[i][0]), name: String(lv[i][1]), board: 'TQBR', level: Number(lv[i][2]) || null, price: Number(lv[i][3]), vol: Number(lv[i][4]) || 0, chg24: Number(lv[i][5]) || 0 });
+    if (String(lv[i][6]) > upd) upd = String(lv[i][6]);
+  }
+  for (i = 1; i < sv.length; i++) {
+    var r = sv[i];
+    if (!r[0]) continue;
+    var k = r[0] + '|' + r[1];
+    (candles[k] = candles[k] || []).push([Number(r[2]), Number(r[4]), Number(r[5]), Number(r[6]), Number(r[7]), Number(r[8])]);
+  }
+  return { ok: true, updated: upd, list: list, candles: candles };
+}
+
+function stocksPut_(q) {
+  if (!authUser_(q)) return { ok: false, err: 'auth' };
+  var d = q.d || {}, list = d.list, cs = d.candles;
+  if (!list || !cs || list.length < 5 || list.length > 120) return { ok: false, err: 'bad' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var old = stocksRead_(), chk = 0, bad = 0;
+    list.forEach(function (s) {
+      var o = old.candles[s.id + '|1d'], nw = cs[s.id] && cs[s.id]['1d'];
+      if (o && o.length && nw && nw.length) { chk++; var r = nw[nw.length - 1][4] / o[o.length - 1][4]; if (!(r > 0.6 && r < 1.6)) bad++; }
+    });
+    if (chk >= 5 && bad > chk / 3) return { ok: false, err: 'sanity' };
+    var rows = [], now = new Date().toISOString();
+    Object.keys(cs).forEach(function (id) {
+      ['1d', '1h'].forEach(function (tf) {
+        (cs[id][tf] || []).forEach(function (k) {
+          rows.push([id, tf, k[0], new Date((k[0] + 10800) * 1000).toISOString().slice(0, 16).replace('T', ' '), k[1], k[2], k[3], k[4], k[5]]);
+        });
+      });
+    });
+    if (rows.length < 100) return { ok: false, err: 'bad' };
+    var L = plainSheet_(ST_LIST, STL_HEAD), S = plainSheet_(ST_SHEET, ST_HEAD);
+    var lrows = list.map(function (s) { return [s.id, s.name, s.level || '', s.price, s.vol, s.chg24, now]; });
+    L.getRange(2, 1, Math.max(L.getMaxRows() - 1, 1), 7).clearContent();
+    L.getRange(2, 1, lrows.length, 7).setValues(lrows);
+    S.getRange(2, 1, Math.max(S.getMaxRows() - 1, 1), 9).clearContent();
+    S.getRange(2, 1, rows.length, 9).setValues(rows);
+    return { ok: true, updated: now, tickers: list.length, rows: rows.length };
+  } finally { lock.releaseLock(); }
 }
 
 // ---------- Курсы валют: обычная таблица на листе «Курсы» в этой же Google Таблице ----------
