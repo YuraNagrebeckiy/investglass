@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { parseBoard } from '../src/data/bondsIss.js';
+import { CBR_IDS, parseDynamic, parseDaily, mergeSeries, dmy } from './cbr.mjs';
 
 const ISS = 'https://iss.moex.com/iss';
 const j = async (u) => {
@@ -111,6 +112,56 @@ await step('moex-fx', async () => {
   if (!Object.keys(out).length) throw new Error('no fx series');
   await writeFile('data/fx.json', JSON.stringify({ updated: new Date().toISOString(), ...out }));
   stats.fx = Object.keys(out);
+});
+
+// Если Мосбиржа не отдала валюту, кладём в тот же файл официальный курс ЦБ (только закрытие). История накапливается из запуска в запуск.
+await step('cbr-fx', async () => {
+  let base = {};
+  try { base = await rd('data/fx.json'); } catch { /* файла ещё нет */ }
+  const viaMoex = new Set(stats.fx || []);
+  const need = Object.keys(CBR_IDS).filter((c) => !viaMoex.has(c));
+  if (!need.length) return;
+  const txt = async (u) => (await j(u)).text();
+  const from = Date.now() - 430 * 864e5, to = Date.now() + 864e5;
+  const series = {};
+  for (const code of need) {
+    try {
+      const rows = parseDynamic(await txt(`https://www.cbr.ru/scripts/XML_dynamic.asp?date_req1=${dmy(from)}&date_req2=${dmy(to)}&VAL_NM_RQ=${CBR_IDS[code]}`));
+      if (rows.length >= 60) series[code] = rows;
+    } catch (e) { stats.cbrDynamic = e.message; }
+  }
+  const lacking = need.filter((c) => !series[c]);
+  if (lacking.length) {
+    const prev = Object.fromEntries(lacking.map((c) => [c, base[c] && /ЦБ/.test(base[c].source || '') ? base[c].candles : []]));
+    const have = new Set(lacking.flatMap((c) => prev[c].map((r) => dmy((r[0] + 10800) * 1000))));
+    const todo = [];
+    for (let i = 0; i < 260 && todo.length < 170; i++) {
+      const t = Date.now() - i * 864e5, wd = new Date(t).getUTCDay();
+      if (wd === 0 || wd === 6) continue;
+      if (todo.length < 6 || !have.has(dmy(t))) todo.push(t);
+    }
+    const add = Object.fromEntries(lacking.map((c) => [c, []]));
+    let k = 0;
+    const worker = async () => {
+      while (k < todo.length) {
+        const t = todo[k++];
+        try {
+          const d = parseDaily(await txt(`https://www.cbr.ru/scripts/XML_daily.asp?date_req=${dmy(t)}`), lacking);
+          if (d) for (const c of lacking) if (d.rates[c]) add[c].push([d.t, d.rates[c], d.rates[c], d.rates[c], d.rates[c], 0]);
+        } catch (e) { stats.cbrDaily = e.message; }
+      }
+    };
+    await Promise.all(Array.from({ length: 5 }, worker));
+    for (const c of lacking) { const m = mergeSeries(prev[c], add[c]); if (m.length > 30) series[c] = m; }
+  }
+  if (!Object.keys(series).length) throw new Error('курсы ЦБ не получены: ' + (stats.cbrDynamic || stats.cbrDaily || 'нет ответа'));
+  const next = { updated: new Date().toISOString() };
+  for (const c of Object.keys(CBR_IDS)) {
+    if (viaMoex.has(c) && base[c]) next[c] = base[c];
+    else if (series[c]) next[c] = { source: 'официальный курс ЦБ РФ, только закрытие', candles: series[c].slice(-320) };
+  }
+  await writeFile('data/fx.json', JSON.stringify(next));
+  stats.fxCbr = Object.keys(series);
 });
 
 await step('moex-stocks', async () => {

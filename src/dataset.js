@@ -21,11 +21,12 @@ function stepState(st, name) {
 async function fill(box) {
   const { st, rates, fees, dep, funds, bonds } = await load();
   const s = (n) => stepState(st, n);
+  const fxM = s('moex-fx'), fxC = s('cbr-fx'), fxOk = fxM.ok || fxC.ok;
   const rows = [
     ['Ключевая ставка ЦБ', 'автоматически, GitHub', rates ? `${rates.keyRate.value}% на ${day(rates.keyRate.asOf)}` : '—', s('cbr-key-rate')],
     ['Ставки OKX: займ USDT и funding', 'автоматически, GitHub', fees ? day(fees.updated) : '—', s('okx')],
     ['Копия базы облигаций', 'автоматически, GitHub', bonds ? when(bonds.updated) : '—', s('moex-bonds')],
-    ['Копия валютных рядов', 'автоматически, GitHub', s('moex-fx').ok ? when(st.updated) : 'дата неизвестна', s('moex-fx')],
+    ['Копия валютных рядов', 'автоматически, GitHub: Мосбиржа, при отказе ЦБ', fxOk ? when(st.updated) : 'дата неизвестна', fxOk ? { ok: true, text: fxM.ok ? 'обновлено (Мосбиржа)' : 'обновлено (официальный курс ЦБ)' } : fxC],
     ['Копия акций MOEX', 'автоматически, GitHub', s('moex-stocks').ok ? when(st.updated) : 'дата неизвестна', s('moex-stocks')],
     ['Вклады банков', 'вручную по сайтам банков', dep ? day(dep.asOf) : '—', { ok: null, text: 'нужна ручная проверка' }],
     ['Средняя макс. ставка вкладов ЦБ', 'вручную', rates && rates.depositAvgMax ? day(rates.depositAvgMax.asOf) : '—', { ok: null, text: 'нужна ручная проверка' }],
@@ -33,9 +34,9 @@ async function fill(box) {
     ['Тарифы брокеров и бирж', 'вручную, со страниц тарифов', 'без даты', { ok: null, text: 'сверяйте с договором' }],
   ];
   const dot = (o) => `<i class="dot ${o === true ? 'green' : o === false ? 'red' : 'yellow'}"></i>`;
-  const blocked = st && st.log && st.log.some((x) => /FAIL moex/.test(x));
+  const blocked = st && st.log && st.log.some((x) => /FAIL moex-(bonds|stocks)/.test(x));
   box.innerHTML = `<table><tr><th>Данные</th><th>Как обновляются</th><th>Последние</th><th>Состояние</th></tr>${rows.map(([n, how, last, o]) => `<tr><td>${esc(n)}</td><td>${esc(how)}</td><td>${esc(last)}</td><td>${dot(o.ok)} ${esc(o.text)}</td></tr>`).join('')}</table>
-  <p class="hint">Последний запуск автообновления на GitHub: ${esc(when(st && st.updated))}. Он стартует примерно каждые 3 часа, но GitHub запускает расписание неточно, интервалы бывают длиннее.${blocked ? ' С серверов GitHub Мосбиржа сейчас не открывается, поэтому копии бумаг, валют и акций не обновились. Приложение при загрузке берёт цены напрямую с Мосбиржи из вашего браузера, а копия служит запасным вариантом.' : ''}</p>
+  <p class="hint">Последний запуск автообновления на GitHub: ${esc(when(st && st.updated))}. Он стартует примерно каждые 3 часа, но GitHub запускает расписание неточно, интервалы бывают длиннее.${blocked ? ' С серверов GitHub Мосбиржа сейчас не открывается, поэтому копии бумаг и акций не обновились. Приложение при загрузке берёт цены напрямую с Мосбиржи из вашего браузера, а копия служит запасным вариантом.' : ''}</p>
   <div class="row"><button class="btn sm ghost" id="cfgReload">Перезагрузить данные</button></div>
   <details><summary>Подробнее о ставках и тарифах</summary><div id="cfgInfoCopy"></div></details>`;
   const src = $('infoBox');
